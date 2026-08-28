@@ -1,0 +1,38 @@
+[build]
+target = "riscv32imac-esp-espidf"
+
+[unstable]
+build-std = ["std", "panic_abort"]
+
+[target.riscv32imac-esp-espidf]
+linker = "ldproxy"
+runner = "espflash flash --monitor --baud 1152000"
+
+rustflags = [
+    #"-C", "force-frame-pointers",  # recommended for proper stack traces #study
+    "--cfg", "espidf_time64"
+]
+
+[env]
+MCU = "esp32c6"
+ESP_IDF_VERSION = "v5.5.5"
+ESP_IDF_TOOLS_INSTALL_DIR = "global"
+    # "out":        '{cargo output}/espressif'
+    # "global":     '~/.espressif'; needs 'ldproxy'
+
+# This is needed if you are using a global 'target' folder (vital e.g. when using a VM). Without it, 'embuild' does
+# not find the files (e.g. 'wrap.h', 'sdkconfig.defaults') within the project root. It then fails the build, not
+# having the bindings.
+#
+# A comment in 'esp-idf-sys' (below) implies this could be changed, in embuild, at some point. But there's no tracking
+# issue for that. (8/26; embuild 0.33.3)
+#
+CARGO_WORKSPACE_DIR = { value = "", relative = true }
+
+#---
+# You can trim the eventual build by declaring the (subset of) components you actually need. This is shown here only
+# as a sample/reminder: we build with the default set = "all components".
+#ESP_IDF_COMPONENTS = """\
+#   cxx;newlib;freertos;esp_hw_support;heap;log;soc;hal;esp_rom;esp_common;esp_system;riscv;main;driver;\
+#   vfs;nvs_flash;wear_levelling;fatfs;spiffs;\
+#"""

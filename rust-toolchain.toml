@@ -1,0 +1,9 @@
+[toolchain]
+# Building 'std' on 'nightly' is broken (Apple silicon), 20-Aug-26 (12-Aug-26):
+#   <<
+#     error[E0425]: cannot find value `AT_FDCWD` in crate `libc`
+#     --> /home/lima/.rustup/toolchains/nightly-aarch64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sys/fs/unix.rs:1896:38
+#   <<
+channel = "nightly-2026-07-14"  # 1.99.0 nightly
+#channel = "nightly"
+components = ["rust-src", "rustfmt"]
