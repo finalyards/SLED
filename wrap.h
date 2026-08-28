@@ -1,8 +1,11 @@
 #pragma once
 
-#if !defined(ESP_IDF_COMP_ESPRESSIF__LED_STRIP_ENABLED)
-# error "'led_strip' component not detected"
-#endif
+// wrap.h
 
 #include "led_strip.h"
 #include "led_strip_rmt.h"
+
+// A wrap around a macro that would otherwise not make it through.
+inline led_color_component_format_t wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB() {
+    return LED_STRIP_COLOR_COMPONENT_FMT_GRB;
+}

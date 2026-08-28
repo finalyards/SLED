@@ -1,14 +1,22 @@
 
-use esp_idf_svc::sys::{
+use std::ptr;
+
+#[path = "../bindings.rs"]
+mod bindings;
+
+use bindings::{
     led_strip_config_t,
     led_strip_handle_t,
     led_strip_new_rmt_device,
     led_strip_rmt_config_t,
     led_strip_set_pixel,
     led_strip_refresh,
-    led_strip_clear
+    led_strip_clear,
+    led_model_t,
+    wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+    soc_periph_rmt_clk_src_t,
+    esp_err_t,
 };
-use std::ptr;
 
 pub struct BuiltInLed {
     handle: led_strip_handle_t,
@@ -21,35 +29,34 @@ impl BuiltInLed {
         let led_cfg = led_strip_config_t {
             strip_gpio_num: gpio_num as i32,
             max_leds: 1,    // just the 1
-            led_model: led_model_t_LED_MODEL_WS2812,    // 0
-            color_component_format: wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB(),
+            led_model: led_model_t::LED_MODEL_WS2812,    // 0
+            color_component_format: unsafe { wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB() },
             ..Default::default()
                 // no invert
         };
 
         let rmt_cfg = led_strip_rmt_config_t {
-            clk_src: rmt_clock_source_t:: soc_periph_rmt_clk_src_t_RMT_CLK_SRC_DEFAULT,
+            clk_src: soc_periph_rmt_clk_src_t::RMT_CLK_SRC_DEFAULT,   // PLL_F80M
             //resolution_hz: 0 or 10_000_000, // 10 MHz (default)
             //mem_block_symbols: 0,     // (default); ESP-IDF driver decides
             //flags: ...                // (default) no DMA needed
             ..Default::default()
         };
 
-        let err = unsafe {
+        if let Some(err) = EspErr::from( unsafe {
             led_strip_new_rmt_device(&led_cfg, &rmt_cfg, &mut handle)
-        };
-        EspErr::from(err)?;
-
+        }) {
+            Err(err)?;
+        }
         assert!(!handle.is_null(), "LED handle is NULL");
 
         Ok(Self { handle })
     }
 
-    pub fn set_rgb(&self, r: u32, g: u32, b: u32) {
+    pub fn set_rgb(&self, r: u8, g: u8, b: u8) {
         unsafe {
-            // Indeksi 0 = ensimmäinen (ja ainoa) ledi
-            led_strip_set_pixel(self.handle, 0, r, g, b);
-            // Työnnetään data ledille RMT-väylää pitkin
+            // component makers have decided to keep the API wide. In practise, only the 8 LSBs matter.
+            led_strip_set_pixel(self.handle, 0, r as u32, g as u32, b as u32);
             led_strip_refresh(self.handle);
         }
     }
@@ -61,10 +68,10 @@ impl BuiltInLed {
     }
 }
 
-pub struct EspErr(pub u8);
+pub struct EspErr(pub esp_err_t);
 
 impl EspErr {
-    fn from(err: u8) -> Option<Self> {
+    fn from(err: esp_err_t) -> Option<Self> {
         if err==0 { None }
         else { Some(Self(err)) }
     }

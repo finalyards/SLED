@@ -1,7 +1,199 @@
+use bindgen::{
+    builder,
+    Builder,
+    EnumVariation,
+};
+
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+
 fn main() {
+
+    // Detect when IDE is running us:
+    //  - Rust Rover (host):
+    //      __CFBundleIdentifier=com.jetbrains.rustrover-EAP
+    //  - Rust Rover (remote development):
+    //      - IDEA_RESTART_VIA_EXIT_CODE=88
+    //      - REMOTE_DEV_LAUNCHER_NAME_FOR_USAGE=remote-dev-server.sh
+    //      - REMOTE_DEV_SERVER_IS_NATIVE_LAUNCHER=1
+    {
+        if env::var("__CFBundleIdentifier").is_ok() ||
+            env::var("REMOTE_DEV_SERVER_IS_NATIVE_LAUNCHER").is_ok() {
+            panic!("IDE build cut short");   // try to avoid spending a _lot_ of time, building ESP-IDF on the IDE
+            //return;  // skip the rest
+        }
+    }
+
     // So conditional compilation configs would be brought in: (optional)
     //  -> https://esp-rs.github.io/esp-idf-sys/esp_idf_sys/#conditional-compilation
     embuild::espidf::sysenv::output();
 
-    println!("cargo:rerun-if-changed=wrap.h");
+    // DEBUG
+    #[cfg(false)]
+    {
+        env::vars().for_each(|(a, b)| { eprintln!("{a}={b}"); });
+        panic!();
+    }
+
+    // Create the bindings for 'led_strip'
+    {
+        // 'esp-idf-sys' has brought in the extra components into (e.g.):
+        //  <<
+        //      /home/lima/target/riscv32imac-esp-espidf/release/build/esp-idf-sys-452cda0294ec9033/out/managed_components
+        //  <<
+        //
+        // Below which:
+        //  `-- espressif__led_strip
+        //      `-- include
+        //          `-- led_strip.h
+        //          `-- led_strip_rmt.h
+        //          `-- led_strip_spi.h
+        //          `-- led_strip_types.h
+        //
+        // Note that this is NOT our 'OUT_DIR'.
+        //
+        #[allow(non_snake_case)]
+
+        let sysroot: String = get_sysroot().to_string_lossy().into();
+
+        let include_paths: Vec<String> = {
+            let my_include_path = {
+                let DEP_ESP_IDF_ROOT = env::var("DEP_ESP_IDF_ROOT")
+                    .expect("missing 'DEP_ESP_IDF_ROOT' env.var");
+                // /home/lima/target/riscv32imac-esp-espidf/release/build/esp-idf-sys-452cda0294ec9033/out
+
+                format!("{}/managed_components/espressif__led_strip/include", DEP_ESP_IDF_ROOT)
+            };
+
+            let sdkconfig_h_include: String = {
+                #[allow(non_snake_case)]
+                let DEP_ESP_IDF_ROOT = env::var("DEP_ESP_IDF_ROOT")
+                    .expect("missing 'DEP_ESP_IDF_ROOT' env.var");
+                // /home/lima/target/riscv32imac-esp-espidf/release/build/esp-idf-sys-452cda0294ec9033/out
+
+                format!("{DEP_ESP_IDF_ROOT}/build/config") // /sdkconfig.h
+            };
+
+            // Lots of general include paths
+            let generic_include_paths: [String;_] = {
+                #[allow(non_snake_case)]
+                let ESP_IDF_PATH = env::var("DEP_ESP_IDF_EMBUILD_ESP_IDF_PATH")
+                    .expect("missing 'DEP_ESP_IDF_EMBUILD_ESP_IDF_PATH' env.var");
+                // /home/lima/.espressif/esp-idf/v5.5.5
+
+                // tbd. eventually clean this and get 'esp32c6' from the 'MCU' env.var.
+                [
+                    "components/esp_common/include",
+                    "components/hal/include",
+                    "components/esp_driver_rmt/include",    // driver/rmt_types.h
+                    "components/esp_driver_spi/include",    // driver/spi_master.h
+                    "components/soc/esp32c6/include",       // soc/clk_tree_defs.h
+                    "components/soc/esp32c6/register",      // soc/interrupt_matrix_reg.h
+                    //"components/esp_driver_uart/include",
+                    "components/esp_hw_support/include",    // spinlock.h
+                    "components/freertos/FreeRTOS-Kernel/include",  // freertos/FreeRTOS.h
+                    "components/freertos/FreeRTOS-Kernel/portable/riscv/include/freertos",  // portmacro.h
+                    "components/freertos/config/include",           // freertos/FreeRTOSConfig.h
+                    "components/freertos/config/include/freertos",  // FreeRTOSConfig.h
+                    "components/freertos/config/riscv/include",     // freertos/FreeRTOSConfig_arch.h
+                    "components/riscv/include",             // riscv/csr.h
+                    "components/esp_rom/include",           // esp_rom_sys.h
+                    "components/heap/include",              // esp_heap_caps.h
+                    "components/esp_system/include",        // esp_system.h
+                    //"components/ieee802154/include",
+                    //"components/log/include",
+                    "components/newlib/platform_include",   // esp_newlib.h
+                ]
+                    .map(|x| format!("{}/{}", ESP_IDF_PATH, x))
+
+                /*** #later
+                #[allow(non_snake_case)]
+                let MCU = env::var("MCU")
+                    .expect("missing 'MCU' env var");
+                // esp32c6
+
+                [
+                    format!("components/soc/{MCU}/include"),
+                    format!("components/soc/{MCU}/register"),
+                ]
+                    .map(|x| format!("{}/{}", ESP_IDF_PATH, x))
+                ***/
+            };
+
+            // tbd. construct this in a better way
+            std::iter::once(my_include_path)
+                .chain([sdkconfig_h_include])
+                .chain([format!("{sysroot}/riscv32-esp-elf/include")])
+                .chain(generic_include_paths)
+                .collect()
+        };
+
+        for p in &include_paths {
+            if !PathBuf::from(&p).exists() {
+                println!("cargo:warning=🟥 Did not exist: {}", p);    // carry on..
+            }
+        }
+
+        let clang_args = {
+            let mut v = vec![];
+
+            v.extend(["-D__riscv".into()]);
+            v.extend(["-D__riscv_xlen=32".into()]);
+            v.extend(["--sysroot".into(), sysroot]);
+            v.extend( include_paths.into_iter().map( |p| format!("-I{p}") ) );
+            v
+        };
+
+        let bindings = builder()
+            .header("wrap.h")
+            .default_enum_style( EnumVariation::NewType { is_global: false, is_bitfield: false } )
+            .use_core()     // prefer 'core' over 'std'
+            .fit_macro_constants(true)
+            .derive_default(true)
+            .generate_inline_functions(true)
+            .clang_args(clang_args)
+            //
+            .allowlist_function("led_strip_.+")
+            .allowlist_function("wrap_.+")
+            //
+            .allowlist_item("soc_periph_rmt_.+")
+            .blocklist_item("(spi|.+_spi)_.+")
+            //
+            .generate()
+        .expect("Unable to generate bindings");
+
+        bindings
+            .write_to_file("tmp/bindings_0.rs")
+            .expect("Couldn't write Rust/C bindings");
+    }
+
+    // What files should trigger a new 'build.rs' run (i.e. affect the binding)?
+    //
+    // Cargo note: 'build.rs' is _not_ executed for every build. It does not need to, if only the
+    //      sources change. Here, we list the files that should trigger a rebuild.
+    //
+    println!("cargo:rerun-if-changed=build.rs");
+    // +
+    println!("cargo:rerun-if-changed=bindings.rs");
+    //
+    // This is  *output* but helps _dependent_crates_ to realize if it has been removed, and
+    // avoid a failing upstream build.
+    println!("cargo:rerun-if-changed=tmp/bindings_0.rs");
+}
+
+/// From an env.var 'DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH', distill the path for '--sysroot'
+fn get_sysroot() -> PathBuf {
+
+    // DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH=/home/lima/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin:/home/lima/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin:/home/lima/.espressif/tools/cmake/3.30.2/bin:/home/lima/.espressif/tools/esp-rom-elfs/20241011:/home/lima/.espressif/python_env/idf5.5_py3.14_env/bin:/home/lima/bin:/home/lima/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/sbin:/sbin:/home/lima/bin:/usr/sbin:/sbin
+
+    let a = env::var("DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH")
+        .expect("Missing 'DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH' env.var");
+
+    let riscv_bin = a.split(':')
+        .find(|p| p.contains("riscv32-esp-elf/bin"))
+        .expect("Failed to figure out sysroot");
+
+    PathBuf::from(riscv_bin).parent().unwrap().to_path_buf()
 }
