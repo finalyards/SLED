@@ -59,13 +59,11 @@ VM with:
 	>Hint. You can use [probe-rs-remote](https://github.com/finalyards-org/probe-rs-remote) (GitHub) to keep the DUT physically separate from the development computer.
 
 
-### Disk space
+**Disk space**
 
-Be ready to have 6..8 GB for the build. 
+The `esp-idf-sys` setup downloads and installs a whole ESP-IDF development toolchain under `~/.espressif`.
 
-This can be surprising. The `esp-idf-sys` setup downloads and installs a whole ESP-IDF development toolchain under `~/.espressif`. 
-
->`cargo clean` does not remove this folder, but you can do it manually, to reclaim the disk space.
+`cargo clean` does not remove this folder, but you can do it manually, to reclaim the disk space.
 
 
 ## Steps
@@ -75,9 +73,13 @@ $ cargo run --release
 ...
 ```
 
+<!--
+tbd. Make different 3s animations; write colors and the function on the console.
+-->
+
 ## Advanced
 
-### Working with an external component (`led_strip`)
+### Working with an external ESP-IDF component (`led_strip`)
 
 They get downloaded to:
 
@@ -101,6 +103,4 @@ If you do not have a use for such, the line in `build.rs` (or the whole file) ca
 
 ## References
 
-<!-- It's messy... 0.37.2
-- [`esp_idf_sys`](https://esp-rs.github.io/esp-idf-sys/esp_idf_sys/)
--->
+- ["Example: Driving WS2812 LEDs with RMT"](https://docs.waveshare.com/ESP32-ESP-IDF-Tutorials/Rmt-Drive-Ws2812) (Waveshare)

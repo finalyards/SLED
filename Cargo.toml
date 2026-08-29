@@ -28,6 +28,7 @@ embassy-time = { version = "0.5", features = ["generic-queue-8"] }
     # tbd. Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
 
 [build-dependencies]
+cc = { version = "1.4" }
 bindgen = { version = "0.72.1" }
 embuild = "0.33"
 

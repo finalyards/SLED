@@ -37,6 +37,8 @@ fn main() {
         panic!();
     }
 
+    let include_paths: Vec<String>;
+
     // Create the bindings for 'led_strip'
     {
         // 'esp-idf-sys' has brought in the extra components into (e.g.):
@@ -58,7 +60,7 @@ fn main() {
 
         let sysroot: String = get_sysroot().to_string_lossy().into();
 
-        let include_paths: Vec<String> = {
+        include_paths = {
             let my_include_path = {
                 let DEP_ESP_IDF_ROOT = env::var("DEP_ESP_IDF_ROOT")
                     .expect("missing 'DEP_ESP_IDF_ROOT' env.var");
@@ -142,10 +144,11 @@ fn main() {
             v.extend(["-D__riscv".into()]);
             v.extend(["-D__riscv_xlen=32".into()]);
             v.extend(["--sysroot".into(), sysroot]);
-            v.extend( include_paths.into_iter().map( |p| format!("-I{p}") ) );
+            v.extend( include_paths.iter().map( |p| format!("-I{p}") ) );
             v
         };
 
+        let wrap_c_path = PathBuf::from("tmp/wrap.c");
         let bindings = builder()
             .header("wrap.h")
             .default_enum_style( EnumVariation::NewType { is_global: false, is_bitfield: false } )
@@ -154,6 +157,13 @@ fn main() {
             .derive_default(true)
             .generate_inline_functions(true)
             .clang_args(clang_args)
+            //
+            .wrap_static_fns(true)
+            .wrap_static_fns_path(&wrap_c_path)
+            .wrap_static_fns_suffix("_ext")
+                // Needs some extension to keep the 'wrap.c' function names separate from inline functions (in 'wrap.h').
+                // However, this is hidden from the Rust level (only matters in linking); VERY NICE!
+                // default is "_extern"
             //
             .allowlist_function("led_strip_.+")
             .allowlist_function("wrap_.+")
@@ -167,6 +177,26 @@ fn main() {
         bindings
             .write_to_file("tmp/bindings_0.rs")
             .expect("Couldn't write Rust/C bindings");
+    }
+
+    // The generated 'tmp/wrap.c' needs to be compiled.
+    {
+        let wrap_c_path = Path::new("tmp/wrap.c");
+        assert!(wrap_c_path.exists());
+
+        let sysroot = get_sysroot();
+            // /home/lima/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/
+
+        let cc_path = sysroot.join("bin")
+            .join("riscv32-esp-elf-gcc");
+
+        cc::Build::new()
+            .compiler(cc_path)
+            .file(wrap_c_path)
+            .includes(include_paths)
+            .include(".")   // wrap.h
+            .flag(format!("--sysroot={}", sysroot.display()))
+            .compile("wrap_static");
     }
 
     // What files should trigger a new 'build.rs' run (i.e. affect the binding)?
@@ -186,7 +216,8 @@ fn main() {
 /// From an env.var 'DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH', distill the path for '--sysroot'
 fn get_sysroot() -> PathBuf {
 
-    // DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH=/home/lima/.espressif/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin:/home/lima/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin:/home/lima/.espressif/tools/cmake/3.30.2/bin:/home/lima/.espressif/tools/esp-rom-elfs/20241011:/home/lima/.espressif/python_env/idf5.5_py3.14_env/bin:/home/lima/bin:/home/lima/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/sbin:/sbin:/home/lima/bin:/usr/sbin:/sbin
+    // DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH=
+    // [...]:/home/lima/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin:[...]
 
     let a = env::var("DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH")
         .expect("Missing 'DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH' env.var");
@@ -195,5 +226,6 @@ fn get_sysroot() -> PathBuf {
         .find(|p| p.contains("riscv32-esp-elf/bin"))
         .expect("Failed to figure out sysroot");
 
+    // return without 'bin'
     PathBuf::from(riscv_bin).parent().unwrap().to_path_buf()
 }
