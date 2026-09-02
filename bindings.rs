@@ -1,6 +1,6 @@
 
 #[allow(non_camel_case_types)]
-//#[allow(unused)]
+#[allow(unused)]
 mod a {
     include!("tmp/bindings_0.rs");
 }

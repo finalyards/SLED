@@ -1,6 +1,5 @@
 use bindgen::{
     builder,
-    Builder,
     EnumVariation,
 };
 
@@ -56,12 +55,11 @@ fn main() {
         //
         // Note that this is NOT our 'OUT_DIR'.
         //
-        #[allow(non_snake_case)]
-
         let sysroot: String = get_sysroot().to_string_lossy().into();
 
         include_paths = {
             let my_include_path = {
+                #[allow(non_snake_case)]
                 let DEP_ESP_IDF_ROOT = env::var("DEP_ESP_IDF_ROOT")
                     .expect("missing 'DEP_ESP_IDF_ROOT' env.var");
                 // /home/lima/target/riscv32imac-esp-espidf/release/build/esp-idf-sys-452cda0294ec9033/out
@@ -213,14 +211,14 @@ fn main() {
     println!("cargo:rerun-if-changed=tmp/bindings_0.rs");
 }
 
-/// From an env.var 'DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH', distill the path for '--sysroot'
+/// From an env.var 'DEP_ESP_IDF_EMBUILD_ENV_PATH', distill the path for '--sysroot'
 fn get_sysroot() -> PathBuf {
 
-    // DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH=
+    // DEP_ESP_IDF_EMBUILD_ENV_PATH=
     // [...]:/home/lima/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20260121/riscv32-esp-elf/bin:[...]
 
-    let a = env::var("DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH")
-        .expect("Missing 'DEP_ESP_IDF_SVC_EMBUILD_ENV_PATH' env.var");
+    let a = env::var("DEP_ESP_IDF_EMBUILD_ENV_PATH")
+        .expect("Missing 'DEP_ESP_IDF_EMBUILD_ENV_PATH' env.var");
 
     let riscv_bin = a.split(':')
         .find(|p| p.contains("riscv32-esp-elf/bin"))

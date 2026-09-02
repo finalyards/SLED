@@ -35,4 +35,3 @@ ESP_IDF_COMPONENTS = """\
     newlib;freertos;esp_hw_support;heap;log;soc;hal;esp_rom;esp_common;esp_system;riscv;main;driver; \
     lwip;esp_netif;vfs;fatfs;spiffs; \
 """
-#r esp_driver_rmt; \

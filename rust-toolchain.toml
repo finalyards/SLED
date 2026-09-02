@@ -1,9 +1,24 @@
 [toolchain]
-# Building 'std' on 'nightly' is broken (Apple silicon), 20-Aug-26 (12-Aug-26):
+channel = "nightly-2026-07-29"  # ok!
+#channel = "nightly-2026-07-30"  # fails
+#channel = "nightly-2026-08-31"  # fails differently
+#channel = "nightly"
+
+components = ["rust-src", "rustfmt"]
+
+# Building 'std' on 'nightly' (1-Aug-26) is broken (aarch64):
 #   <<
 #     error[E0425]: cannot find value `AT_FDCWD` in crate `libc`
 #     --> /home/lima/.rustup/toolchains/nightly-aarch64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sys/fs/unix.rs:1896:38
 #   <<
-channel = "nightly-2026-07-14"  # 1.99.0 nightly
-#channel = "nightly"
-components = ["rust-src", "rustfmt"]
+#
+
+# 31-Aug-2026 fails like this:
+# <<
+#   Compiling strum_macros v0.24.3
+#   error[E0599]: no method named `as_ptr` found for struct `DropGuard<Pin<&COpaque<pthread_attr_t>>, {closure@unix.rs:61:34}>` in the current scope
+#   --> /home/lima/.rustup/toolchains/nightly-aarch64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sys/thread/unix.rs:70:57
+#   |
+#   70 |                     cmp::max(stack, min_stack_size(attr.as_ptr()))
+#   |                                                         ^^^^^^ method not found in `DropGuard<Pin<&COpaque<pthread_attr_t>>, {closure@unix.rs:61:34}>`
+# <<

@@ -19,10 +19,12 @@ remote_component = { name = "espressif/led_strip", version = "3.0.3" }
 
 [dependencies]
 log = "0.4"
-esp-idf-svc = { version = "0.52.1", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
 
-# By adding 'esp-idf-sys' explicitly, we get 'DEP_ESP_IDF_ROOT' to be among the build env.vars. 'build.rs' uses this.
+# 'esp-idf-sys' brings the whole ESP-IDF ecosystem to Rust.
 esp-idf-sys = { version = "0.37.2", default-features = false }
+
+[dev-dependencies]
+esp-idf-svc = { version = "0.52.1", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
 
 embassy-time = { version = "0.5", features = ["generic-queue-8"] }
     # tbd. Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
@@ -43,10 +45,6 @@ espressif_devkit_c1 = ["_gpio_8", "_color_mode_grb"]
 
 [profile.release]
 opt-level = "s"
-
-[[bin]]
-name = "sample"
-path = "src/bin/main.rs"
 
 # Needed for using with ESP-IDF 5.5.5 (breaks stuff with 5.5.4):
 [patch.crates-io]
