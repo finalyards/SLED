@@ -16,13 +16,19 @@ rustflags = [
 [env]
 MCU = "esp32c6"
 
-# The author likes testing (only) on the latest stable, but the code should work with ESP-IDF 5.2+ (depends on the
-# limitations of the 'espressif/led_strip' component, and of 'esp-idf-sys').
+# We occasionally swap the target between:
+#   - latest ESP-IDF 5.5.x
+#   - latest ESP-IDF 6.x
+#
+# Builds on earlier versions _may_ succeed but are not tested against. The version restrictions come from:
+#   - 'espressif/led_strip' component (ESP-IDF 5.2+)
+#   - esp-idf-sys
+#   - in addition, the 'build.rs' (bindings) will need tuning for other-than-supported versions
 #
 # Report here if you use the library with older ESP-IDF versions and it works.
 #
-ESP_IDF_VERSION = "5.5.6"
 #ESP_IDF_VERSION = "6.1"
+ESP_IDF_VERSION = "5.5.6"
 
 ESP_IDF_TOOLS_INSTALL_DIR = "global"
     # "out":        '{cargo output}/espressif'
@@ -32,8 +38,8 @@ ESP_IDF_TOOLS_INSTALL_DIR = "global"
 # not find the files (e.g. 'wrap.h', 'sdkconfig.defaults') within the project root. It then fails the build, not
 # having the bindings.
 #
-# A comment in 'esp-idf-sys' (below) implies this could be changed, in embuild, at some point. But there's no tracking
-# issue for that. (8/26; embuild 0.33.3)
+# A comment in 'esp-idf-sys' implies this could be changed, in embuild, at some point. But there's no tracking
+# issue for that. (Aug'26; embuild 0.33.3)
 #
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
 

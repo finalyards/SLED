@@ -14,7 +14,7 @@ rust-version = "1.99"
 remote_component = { name = "espressif/led_strip", version = "3.1.1" }
 
 [dependencies]
-log = { version = "0.4" }
+log = { version = "0.4", optional = true }
 
 esp-idf-sys = { version = "0.38.1", default-features = false, features = ["native"] }
     #
@@ -54,3 +54,7 @@ opt-level = "s"
 #|esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf" } #, rev = "..."
 #|esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf" }
 #|esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf" }
+
+[[example]]
+name = "a"
+required-features = ["log"]

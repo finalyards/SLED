@@ -29,7 +29,7 @@ fn main() {
     // DEBUG
     //
     //      ESP_IDF_TOOLS_INSTALL_DIR=global
-    //      ESP_IDF_VERSION=v5.5.5
+    //      ESP_IDF_VERSION=5.5.6  # "6.1"
     //
     #[cfg(false)]
     {
@@ -41,6 +41,11 @@ fn main() {
 
     // Needed for linking of executables to succeed.
     embuild::espidf::sysenv::output();
+
+    const IS_V5_5: bool = {
+        let bytes = env!("ESP_IDF_VERSION").as_bytes();
+        bytes[0] == b'5' && bytes[1] == b'.' && bytes[2] == b'5'    // "5.5"
+    };
 
     let include_paths: Vec<String>;
 
@@ -63,8 +68,7 @@ fn main() {
         //
         let sysroot: String = get_sysroot().to_string_lossy().into();
 
-        let mcu = env!("MCU");
-        assert!(mcu == "esp32c6", "INTERNAL: MCU {} currently not supported", mcu);
+        const MCU: &str = env!("MCU");  // "esp32c6"
 
         include_paths = {
             let my_include_path = {
@@ -86,19 +90,20 @@ fn main() {
             };
 
             // Lots of general include paths
-            let generic_include_paths: [String;_] = {
+            let generic_include_paths: Vec<String> = {
                 #[allow(non_snake_case)]
                 let ESP_IDF_PATH = env::var("DEP_ESP_IDF_EMBUILD_ESP_IDF_PATH")
                     .expect("🟥 missing 'DEP_ESP_IDF_EMBUILD_ESP_IDF_PATH' env.var");
-                // /home/lima/.espressif/esp-idf/v5.5.5
+                // /home/lima/.espressif/esp-idf/v6.1
+                // /home/lima/.espressif/esp-idf/v5.5.6
 
-                [
+                let mut a = vec!(
                     "components/esp_common/include",
-                    "components/hal/include",
+                    "components/soc/${MCU}/include",       // soc/clk_tree_defs.h
+
                     "components/esp_driver_rmt/include",    // driver/rmt_types.h
                     "components/esp_driver_spi/include",    // driver/spi_master.h
-                    format!("components/soc/{mcu}/include").as_str(),       // soc/clk_tree_defs.h
-                    format!("components/soc/{mcu}/register").as_str(),      // soc/interrupt_matrix_reg.h
+                    "components/soc/${MCU}/register",      // soc/interrupt_matrix_reg.h
                     "components/esp_hw_support/include",    // spinlock.h
                     "components/freertos/FreeRTOS-Kernel/include",  // freertos/FreeRTOS.h
                     "components/freertos/FreeRTOS-Kernel/portable/riscv/include/freertos",  // portmacro.h
@@ -109,9 +114,30 @@ fn main() {
                     "components/esp_rom/include",           // esp_rom_sys.h
                     "components/heap/include",              // esp_heap_caps.h
                     "components/esp_system/include",        // esp_system.h
-                    "components/newlib/platform_include",   // esp_newlib.h
-                ]
-                    .map(|x| format!("{}/{}", ESP_IDF_PATH, x))
+                );
+
+                a.extend(
+                    if IS_V5_5 {    // 5.5.x
+                        vec!(
+                            "components/hal/include",           // hal/gpio_types.h (5.5.x)
+                            "components/newlib/platform_include",   // esp_newlib.h (5.5.x)
+                        )
+                    } else {  // 6.1
+                        vec!(
+                            "components/soc/include",           // soc/soc_caps_eval.h (6.1)
+                            "components/esp_hal_gpio/include",  // hal/gpio_types.h (6.1)
+                            "components/esp_hal_gpio/${MCU}/include",  // soc/gpio_num.h (6.1)
+                            "components/esp_hal_rmt/include",   // hal/rmt_types.h (6.1)
+                            "components/esp_hal_gpspi/include",   // hal/spi_types.h (6.1)
+                        )
+                    }
+                );
+
+                a.into_iter().map(|x| {
+                    let x = x.replace("${MCU}", MCU);
+
+                    format!("{}/{}", ESP_IDF_PATH, x)
+                }).collect()
             };
 
             // tbd. construct this in a better way

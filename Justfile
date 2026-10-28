@@ -18,7 +18,7 @@ build:
 		--jobs 1
 
 build-a:
-	cargo {{nightly}} build --release -vv --example a
+	cargo {{nightly}} build --release -vv --example a --features log
 
 run-a:
-	cargo {{nightly}} run --release -vv --example a
+	cargo {{nightly}} run --release -vv --example a --features log

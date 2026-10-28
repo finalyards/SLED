@@ -2,8 +2,8 @@
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=20000
 
 # Recommended by 'esp-idf-svc', at least if (as we do) 'embassy-time-driver' is being used.
-CONFIG_ESP_TIMER_TASK_STACK_SIZE=4096
 CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=8192
+CONFIG_ESP_TIMER_TASK_STACK_SIZE=4096
 CONFIG_PTHREAD_TASK_STACK_SIZE_DEFAULT=8192
 
 # "Increase a bit these stack sizes as they are also a bit too small by default" (not confirmed)
