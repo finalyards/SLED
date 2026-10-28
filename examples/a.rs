@@ -2,6 +2,8 @@ use esp_idf_svc;
 
 use sled::BuiltInLed;
 
+use embassy_executor as _;
+
 fn main() {
     // It is necessary to call this function once.
     esp_idf_svc::sys::link_patches();
@@ -10,7 +12,7 @@ fn main() {
 
     log::info!("Lights up, world!");
 
-//#[cfg(feature = "esp32c6m1")]
+    #[cfg(feature = "_gpio_8")]
     const GPIO_NUM: u8 = 8;
 
     if let Ok(led) = BuiltInLed::new(GPIO_NUM) {

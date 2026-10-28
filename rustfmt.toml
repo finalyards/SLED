@@ -1,0 +1,22 @@
+max_width = 100
+  # default 80
+
+imports_granularity = "Crate"
+imports_layout = "Vertical"
+
+# Add comma to end of lists (note: helps with diffs!)
+trailing_comma = "Vertical"
+  # Vertical is default
+
+# Ryhmittele importit (Std, External, Crate)
+group_imports = "StdExternalCrate"
+
+# Formatting doc-comments.
+wrap_comments = true
+normalize_doc_attributes = true
+
+# Format strings (google.ai: "useful with TOML constants, logs")
+format_strings = true
+
+# "keep function calls clear" -google.ai
+use_small_heuristics = "Default"

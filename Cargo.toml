@@ -4,35 +4,37 @@ version = "0.0.1"
 edition = "2024"
 rust-version = "1.99"
 
-# default
-#[package.metadata.esp-idf-sys]
-#esp_idf_component_manager = "y"
-
 # Available versions (ESP Registry):
-#   -> https://components.espressif.com/components/espressif/led_strip/versions/3.0.3/readme
+#   -> https://components.espressif.com/components/espressif/led_strip/versions/3.1.1/readme
 #
 # Also:
 #   -> https://esp-rs.github.io/esp-idf-sys/esp_idf_sys/#extra-esp-idf-components
 #
 [[package.metadata.esp-idf-sys.extra_components]]
-remote_component = { name = "espressif/led_strip", version = "3.0.3" }
+remote_component = { name = "espressif/led_strip", version = "3.1.1" }
 
 [dependencies]
-log = "0.4"
+log = { version = "0.4" }
 
-# 'esp-idf-sys' brings the whole ESP-IDF ecosystem to Rust.
-esp-idf-sys = { version = "0.37.2", default-features = false }
+esp-idf-sys = { version = "0.38.1", default-features = false, features = ["native"] }
+    #
+    # Carries ESP-IDF headers, libraries, pulls in external component(s).
+    # Needs to be under '[dependencies]' since it carries libraries that end up in the product.
 
 [dev-dependencies]
-esp-idf-svc = { version = "0.52.1", features = ["critical-section", "embassy-time-driver", "embassy-sync"] }
+esp-idf-svc = { version = "0.53.0", features = ["critical-section", "embassy-time-driver", "native"] } # "embassy-sync"
 
-embassy-time = { version = "0.5", features = ["generic-queue-8"] }
-    # tbd. Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
+embassy-executor = { version = "0.10", features = ["executor-thread", "platform-std"] }
+#embassy-sync     = { version = "0.8.0" }
+
+#embassy-time = { version = "0.5" }
+    # no need for feature "generic-queue-8" when both 'embassy-time' and 'embassy-executor' are being used.
+    #   /source: comment in esp-idf-template generated bare bones Cargo.toml
 
 [build-dependencies]
-cc = { version = "1.4" }
-bindgen = { version = "0.72.1" }
-embuild = "0.33"
+cc = { version = "1.10" }
+bindgen = { version = "0.73" }
+embuild = {  version = "0.33", features = ["espidf"] }
 
 [features]
 default = ["espressif_devkit_m1"]
@@ -46,18 +48,9 @@ espressif_devkit_c1 = ["_gpio_8", "_color_mode_grb"]
 [profile.release]
 opt-level = "s"
 
-# Needed for using with ESP-IDF 5.5.5 (breaks stuff with 5.5.4):
-[patch.crates-io]
-# > 0.46.2: https://github.com/esp-rs/esp-idf-hal/commit/95adcb9ad82288b20ef032e86e2dc9de824f45e3
-esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf-hal" }
-# > 0.52.1: https://github.com/esp-rs/esp-idf-svc/commit/e1761de00f0ac905da0ce592767184f8c851d5e0
-esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf-svc" }
-# > 0.37.2: https://github.com/esp-rs/esp-idf-sys/commit/b0990892a63d808af25c7bda70f2726e76543743
-#esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys" }
-
-# patched overrides
-esp-idf-sys = { git = "https://github.com/finalyards/esp-idf-sys.fork.git" }
-
-#---
-# left-overs
-#r ~harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
+# Take latest/specific git versions.
+#
+#|[patch.crates-io]
+#|esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf" } #, rev = "..."
+#|esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf" }
+#|esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf" }

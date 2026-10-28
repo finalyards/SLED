@@ -1,5 +1,7 @@
+#![no_std]
 
-use std::ptr;
+extern crate alloc;
+use core::ptr;
 
 #[path = "../bindings.rs"]
 mod bindings;
@@ -17,6 +19,9 @@ use bindings::{
     soc_periph_rmt_clk_src_t,
     esp_err_t,
 };
+
+// It's needed at the build, on the 'dependencies' side. This removes a warning.
+use esp_idf_sys as _;
 
 pub struct BuiltInLed {
     handle: led_strip_handle_t,
@@ -43,11 +48,9 @@ impl BuiltInLed {
             ..Default::default()
         };
 
-        if let Some(err) = EspErr::from( unsafe {
+        EspErr::wrap( unsafe {
             led_strip_new_rmt_device(&led_cfg, &rmt_cfg, &mut handle)
-        }) {
-            Err(err)?;
-        }
+        })?;
         assert!(!handle.is_null(), "LED handle is NULL");
 
         Ok(Self { handle })
@@ -71,8 +74,8 @@ impl BuiltInLed {
 pub struct EspErr(pub esp_err_t);
 
 impl EspErr {
-    fn from(err: esp_err_t) -> Option<Self> {
-        if err==0 { None }
-        else { Some(Self(err)) }
+    fn wrap(err: esp_err_t) -> Result<(),Self> {
+        if err==0 { Ok(()) }
+        else { Err(Self(err)) }
     }
 }

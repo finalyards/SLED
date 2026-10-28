@@ -6,16 +6,24 @@ build-std = ["std", "panic_abort"]
 
 [target.riscv32imac-esp-espidf]
 linker = "ldproxy"
-runner = "espflash flash --monitor --baud 1152000"
+runner = "espflash flash --monitor"
 
 rustflags = [
-    #"-C", "force-frame-pointers",  # recommended for proper stack traces #study
+    "-C", "force-frame-pointers",  # recommended for proper stack traces
     "--cfg", "espidf_time64"
 ]
 
 [env]
 MCU = "esp32c6"
-ESP_IDF_VERSION = "v5.5.5"
+
+# The author likes testing (only) on the latest stable, but the code should work with ESP-IDF 5.2+ (depends on the
+# limitations of the 'espressif/led_strip' component, and of 'esp-idf-sys').
+#
+# Report here if you use the library with older ESP-IDF versions and it works.
+#
+ESP_IDF_VERSION = "5.5.6"
+#ESP_IDF_VERSION = "6.1"
+
 ESP_IDF_TOOLS_INSTALL_DIR = "global"
     # "out":        '{cargo output}/espressif'
     # "global":     '~/.espressif'; needs 'ldproxy'
@@ -29,9 +37,9 @@ ESP_IDF_TOOLS_INSTALL_DIR = "global"
 #
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
 
-# By default, ESP-IDF brings in all standard components. Limiting this to what we actually need (saves time and keeps
-# bindgen clear).
-ESP_IDF_COMPONENTS = """\
-    newlib;freertos;esp_hw_support;heap;log;soc;hal;esp_rom;esp_common;esp_system;riscv;main;driver; \
-    lwip;esp_netif;vfs;fatfs;spiffs; \
-"""
+# By default, ESP-IDF brings in all kinds of components. This is a mechanism to cut their list, but maintaining a
+# suitable list is tedious. Best to run with defaults, for now.
+#
+#ESP_IDF_COMPONENTS = """\
+#   ...,...
+#"""
