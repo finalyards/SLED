@@ -1,11 +1,11 @@
-use esp_idf_svc;
+use sled::SLed;
 
-use sled::BuiltInLed;
-
-use embassy_executor as _;
-
+/// Simplest possible example. Synchronous.
+///
+/// Use this to test that the hardware interface works.
+///
 fn main() {
-    // It is necessary to call this function once.
+    // 'esp-idf-sys' needs it. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_svc::sys::link_patches();
 
     esp_idf_svc::log::EspLogger::initialize_default();
@@ -15,10 +15,10 @@ fn main() {
     #[cfg(feature = "_gpio_8")]
     const GPIO_NUM: u8 = 8;
 
-    if let Ok(led) = BuiltInLed::new(GPIO_NUM) {
-        led.set_rgb(255, 0, 0); // red
+    let led = SLed::new(GPIO_NUM)
+        .unwrap_or_else(|e| panic!("Failed to initialize: {:?}", e));
 
-        // async wait
-        //led.set_rgb(0, 0, 255, 0, 0); // blue
+    {
+        led.set_rgb(0, 0, 0); // red
     }
 }

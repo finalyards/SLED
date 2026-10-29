@@ -1,6 +1,5 @@
 #![no_std]
 
-extern crate alloc;
 use core::ptr;
 
 #[path = "../bindings.rs"]
@@ -17,17 +16,19 @@ use bindings::{
     led_model_t,
     wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB,
     soc_periph_rmt_clk_src_t,
-    esp_err_t,
 };
+
+mod error;
+pub use error::EspErr;
 
 // It's needed at the build, on the 'dependencies' side. This removes a warning.
 use esp_idf_sys as _;
 
-pub struct BuiltInLed {
+pub struct SLed {
     handle: led_strip_handle_t,
 }
 
-impl BuiltInLed {
+impl SLed {
     pub fn new(gpio_num: u8) -> Result<Self, EspErr> {
         let mut handle: led_strip_handle_t = ptr::null_mut();
 
@@ -68,14 +69,5 @@ impl BuiltInLed {
         unsafe {
             led_strip_clear(self.handle);
         }
-    }
-}
-
-pub struct EspErr(pub esp_err_t);
-
-impl EspErr {
-    fn wrap(err: esp_err_t) -> Result<(),Self> {
-        if err==0 { Ok(()) }
-        else { Err(Self(err)) }
     }
 }

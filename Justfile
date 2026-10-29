@@ -9,16 +9,24 @@ nightly := ""
 
 alias b:= build
 alias ba:= build-a
+alias bb:= build-b
 
-alias r:= run-a
+#alias r:= run-a
 alias ra:= run-a
+alias rb:= run-b
 
 build:
 	cargo {{nightly}} build --release -vv \
 		--jobs 1
 
 build-a:
-	cargo {{nightly}} build --release -vv --example a --features log
+	cargo {{nightly}} build --release -vv --example a
 
 run-a:
-	cargo {{nightly}} run --release -vv --example a --features log
+	cargo {{nightly}} run --release -vv --example a
+
+build-b:
+	cargo {{nightly}} build --release -vv --example b
+
+run-b:
+	cargo {{nightly}} run --release -vv --example b
