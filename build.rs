@@ -14,7 +14,7 @@ fn main() {
     // i.e. keep this before 'embuild::...' - otherwise '.espressif' or '.embuild' start occurring
     //      on the host disk.
     //
-    //  - Rust Rover (host):
+    //  - Rust Rover:
     //      __CFBundleIdentifier=com.jetbrains.rustrover-EAP
     //  - Rust Rover (remote development):
     //      - REMOTE_DEV_SERVER_IS_NATIVE_LAUNCHER=1

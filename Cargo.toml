@@ -29,7 +29,6 @@ embassy-executor = { version = "0.10", features = ["executor-thread", "platform-
 
 embassy-time = { version = "0.5" }
     # no need for feature "generic-queue-8" when both 'embassy-time' and 'embassy-executor' are being used.
-    #   /source: comment in esp-idf-template generated bare bones Cargo.toml
 
 log = { version = "0.4" }
 

@@ -10,7 +10,7 @@ runner = "espflash flash --monitor"
 
 rustflags = [
     "-C", "force-frame-pointers",  # recommended for proper stack traces
-    "--cfg", "espidf_time64"
+    "--cfg", "espidf_time64",      # must be set for ESP-IDF 5.0 and above
 ]
 
 [env]
@@ -43,9 +43,15 @@ ESP_IDF_TOOLS_INSTALL_DIR = "global"
 #
 CARGO_WORKSPACE_DIR = { value = "", relative = true }
 
+# Suppress some 'esp-idf-sys' warnings:
+#   <<
+#       [esp-idf-sys 0.38.1] clang diag: /home/ubuntu/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/esp-idf-sys-0.37.2/src/include/esp-idf/bindings.h:383:5: warning: macro expansion producing 'defined' has undefined behavior [-Wexpansion-to-defined]
+#   <<
+BINDGEN_EXTRA_CLANG_ARGS="-Wno-expansion-to-defined"
+
 # By default, ESP-IDF brings in all kinds of components. This is a mechanism to cut their list, but maintaining a
 # suitable list is tedious. Best to run with defaults, for now.
 #
 #ESP_IDF_COMPONENTS = """\
-#   ...,...
+#   ...,... \
 #"""

@@ -1,3 +1,5 @@
+# NOTE: Contents of this file are experimental, and more useful in larger projects.
+
 max_width = 100
   # default 80
 
@@ -8,15 +10,15 @@ imports_layout = "Vertical"
 trailing_comma = "Vertical"
   # Vertical is default
 
-# Ryhmittele importit (Std, External, Crate)
+# Group imports (Std, External, Crate)
 group_imports = "StdExternalCrate"
 
 # Formatting doc-comments.
 wrap_comments = true
 normalize_doc_attributes = true
 
-# Format strings (google.ai: "useful with TOML constants, logs")
+# Format strings ("useful with TOML constants, logs" --google AI)
 format_strings = true
 
-# "keep function calls clear" -google.ai
+# "keep function calls clear" --google.ai
 use_small_heuristics = "Default"

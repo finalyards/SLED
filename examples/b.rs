@@ -3,7 +3,6 @@ use esp_idf_svc::{
     sys::link_patches,
 };
 
-use embassy_executor as _;
 use embassy_executor::Spawner;
 use sled::SLed;
 
