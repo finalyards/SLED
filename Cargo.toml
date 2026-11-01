@@ -16,6 +16,8 @@ remote_component = { name = "espressif/led_strip", version = "3.1.1" }
 [dependencies]
 log = { version = "0.4", optional = true }
 
+embassy-time = { version = "0.5" }
+
 esp-idf-sys = { version = "0.38.1", default-features = false, features = ["native"] }
     #
     # Carries ESP-IDF headers, libraries, pulls in external component(s).
@@ -27,7 +29,7 @@ esp-idf-svc = { version = "0.53.0", features = ["critical-section", "embassy-tim
 embassy-executor = { version = "0.10", features = ["executor-thread", "platform-std"] }
 #embassy-sync     = { version = "0.8.0" }
 
-embassy-time = { version = "0.5" }
+#embassy-time = { version = "0.5" }
     # no need for feature "generic-queue-8" when both 'embassy-time' and 'embassy-executor' are being used.
 
 log = { version = "0.4" }
@@ -55,3 +57,11 @@ opt-level = "s"
 #|esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf" } #, rev = "..."
 #|esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf" }
 #|esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf" }
+
+[[bin]]
+name = "a"
+required-features = ["log"]
+
+[[bin]]
+name = "b"
+required-features = ["log"]
