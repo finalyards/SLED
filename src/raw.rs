@@ -15,7 +15,7 @@ use bindings::{
     led_strip_rmt_config_t,
     led_strip_set_pixel,
     led_strip_refresh,
-    led_strip_clear,
+    //led_strip_clear,
     led_model_t,
     soc_periph_rmt_clk_src_t,
 };
@@ -24,21 +24,24 @@ use bindings::{
     wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB,
 };
 
-pub struct SLed {
+use super::Rgb;
+
+/// Handles connection with the ESP-IDF 'espressif/led_strip' component.
+pub(crate) struct RawSLed {
     handle: led_strip_handle_t,
 }
 
-impl SLed {
+impl RawSLed {
     #[cfg(feature = "_gpio_8")]
     const GPIO_NUM: u8 = 8;
 
-    pub fn new(gpio_num: u8) -> Result<Self, EspErr> {
+    pub fn new() -> Result<Self, EspErr> {
         let mut handle: led_strip_handle_t = ptr::null_mut();
 
         let led_cfg = led_strip_config_t {
-            strip_gpio_num: gpio_num as i32,
-            max_leds: 1,    // just the 1
-            led_model: led_model_t::LED_MODEL_WS2812,    // 0
+            strip_gpio_num: Self::GPIO_NUM as i32,
+            max_leds: 1,    // just 1
+            led_model: led_model_t::LED_MODEL_WS2812,
             color_component_format: {
                 #[cfg(feature = "_color_mode_grb")]
                 unsafe { wrap_LED_STRIP_COLOR_COMPONENT_FMT_GRB() }
@@ -71,7 +74,9 @@ impl SLed {
     //  tbd. Study the 'led_strip' sources; decide, whether we should panic already here (and offer
     //      more straightforward API).
 
-    pub fn set_rgb(&self, r: u8, g: u8, b: u8) -> Result<(), EspErr> {
+    pub fn set_rgb(&self, rgb: Rgb) -> Result<(), EspErr> {
+        let Rgb{ r, g, b } = rgb;
+
         EspErr::wrap( unsafe {
             // component makers have decided to keep the API wide. In practise, only the 8 LSBs matter.
             led_strip_set_pixel(self.handle, 0, r as u32, g as u32, b as u32)
@@ -82,6 +87,7 @@ impl SLed {
         })
     }
 
+    #[cfg(false)]   // disabled
     pub fn turn_off(&self) -> Result<(), EspErr> {
         EspErr::wrap( unsafe {
             led_strip_clear(self.handle)
@@ -91,7 +97,7 @@ impl SLed {
 
 /// Wrapping of 'esp_err_t'
 #[derive(Debug)]
-pub struct EspErr(pub NonZeroI32 /*esp_err_t*/);
+pub(crate) struct EspErr(pub NonZeroI32 /*esp_err_t*/);
 
 impl EspErr {
     pub(crate) fn wrap(err: esp_err_t) -> Result<(),Self> {

@@ -14,7 +14,7 @@ rust-version = "1.99"
 remote_component = { name = "espressif/led_strip", version = "3.1.1" }
 
 [dependencies]
-log = { version = "0.4", optional = true }
+log = { version = "0.4" }   # tbd. eventualy, optional=true?
 
 embassy-time = { version = "0.5" }
 
@@ -24,13 +24,15 @@ esp-idf-sys = { version = "0.38.1", default-features = false, features = ["nativ
     # Needs to be under '[dependencies]' since it carries libraries that end up in the product.
 
 [dev-dependencies]
+esp-idf-hal = { version = "0.47" }
+
 esp-idf-svc = { version = "0.53.0", features = ["critical-section", "embassy-time-driver", "native"] } # "embassy-sync"
 
 embassy-executor = { version = "0.10", features = ["executor-thread", "platform-std"] }
-#embassy-sync     = { version = "0.8.0" }
+embassy-sync     = { version = "0.8", features = ["log"] }  # "std"
 
-#embassy-time = { version = "0.5" }
-    # no need for feature "generic-queue-8" when both 'embassy-time' and 'embassy-executor' are being used.
+# Note on 'embassy-time':
+#   No need for feature "generic-queue-8" when both 'embassy-time' and 'embassy-executor' are being used.
 
 log = { version = "0.4" }
 
@@ -45,6 +47,8 @@ default = ["espressif_devkit_m1"]
 _gpio_8 = []
 _color_mode_grb = []
 
+color_names = []
+
 espressif_devkit_m1 = ["_gpio_8", "_color_mode_grb"]
 espressif_devkit_c1 = ["_gpio_8", "_color_mode_grb"]
 
@@ -58,10 +62,10 @@ opt-level = "s"
 #|esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf" }
 #|esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf" }
 
-[[bin]]
-name = "a"
-required-features = ["log"]
-
-[[bin]]
-name = "b"
-required-features = ["log"]
+#[[bin]]
+#name = "a"
+#required-features = ["log"]
+#
+#[[bin]]
+#name = "b"
+#required-features = ["log"]

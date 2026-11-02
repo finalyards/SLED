@@ -1,14 +1,11 @@
-#[allow(unstable_features)]
-
-use core::marker::ConstParamTy;
-
-#[derive(PartialEq, Eq, ConstParamTy, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Rgb{
     pub r:u8,
     pub g:u8,
     pub b:u8
 }
 
+#[cfg(feature = "color_names")]
 impl Rgb {
     // There are quite many of them. https://www.w3schools.com/colors/colors_names.asp
     // This is mainly intended for examples/testing.
@@ -21,16 +18,6 @@ impl Rgb {
     pub const BLUE: Self = Self { r: 0, g: 0, b: 255 };
 
     pub const WHITE: Self = Self { r: 255, g: 255, b: 255 };
-
-    /// Create an rgb color from a hex constant, e.g. '0xff7f50' ("coral").
-    #[cfg(false)]
-    const fn from_hex(v: u32) -> Self {
-        Self{
-            r: (v >> 16) as u8,
-            g: ((v >> 8) & 0xff) as u8,
-            b: (v & 0xff) as u8,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -85,9 +72,9 @@ impl Hsv {
     pub fn to_rgb(self) -> Rgb {
         let Hsv { h, s, v } = self;
 
-        assert!( h >= 0.0 && h < 360.0 );
-        assert!( s >= 0.0 && s <= 1.0 );
-        assert!( v >= 0.0 && v <= 1.0 );
+        assert!(h >= 0.0 && h < 360.0);
+        assert!(s >= 0.0 && s <= 1.0);
+        assert!(v >= 0.0 && v <= 1.0);
 
         let c = v * s;
         let h_div = h / 60.0;
@@ -115,43 +102,43 @@ impl Hsv {
             b: ((b_prime + m) * 255.0).round() as u8,
         }
     }
+}
 
-    /// Convert HSV -> RGB
-    ///
-    /// @note We don't benefit from this being 'const fn'. If there's a better non-const way, can use it.
-    ///
-    #[cfg(false)]
-    pub const fn to_rgb(self) -> Rgb {
-        // Clamp to limits in 'const' context
-        let h = if self.h < 0.0 { 0.0 } else if self.h >= 360.0 { 359.9 } else { self.h };
-        let s = if self.s < 0.0 { 0.0 } else if self.s > 1.0 { 1.0 } else { self.s };
-        let v = if self.v < 0.0 { 0.0 } else if self.v > 1.0 { 1.0 } else { self.v };
+/// Convert HSV -> RGB
+///
+/// @note We don't benefit from this being 'const fn'. If there's a better non-const way, can use it.
+///
+#[cfg(false)]
+pub const fn to_rgb(self) -> Rgb {
+    // Clamp to limits in 'const' context
+    let h = if self.h < 0.0 { 0.0 } else if self.h >= 360.0 { 359.9 } else { self.h };
+    let s = if self.s < 0.0 { 0.0 } else if self.s > 1.0 { 1.0 } else { self.s };
+    let v = if self.v < 0.0 { 0.0 } else if self.v > 1.0 { 1.0 } else { self.v };
 
-        let c = v * s;
-        // const compatible modulo operation for floating point: (h / 60.0) % 2.0
-        let h_div = h / 60.0;
-        let rem = h_div - (2.0 * ((h_div / 2.0) as i32 as f32));
-        let x = c * (1.0 - if rem - 1.0 < 0.0 { -(rem - 1.0) } else { rem - 1.0 });
-        let m = v - c;
+    let c = v * s;
+    // const compatible modulo operation for floating point: (h / 60.0) % 2.0
+    let h_div = h / 60.0;
+    let rem = h_div - (2.0 * ((h_div / 2.0) as i32 as f32));
+    let x = c * (1.0 - if rem - 1.0 < 0.0 { -(rem - 1.0) } else { rem - 1.0 });
+    let m = v - c;
 
-        let (r_prime, g_prime, b_prime) = if h_div < 1.0 {
-            (c, x, 0.0)
-        } else if h_div < 2.0 {
-            (x, c, 0.0)
-        } else if h_div < 3.0 {
-            (0.0, c, x)
-        } else if h_div < 4.0 {
-            (0.0, x, c)
-        } else if h_div < 5.0 {
-            (x, 0.0, c)
-        } else {
-            (c, 0.0, x)
-        };
+    let (r_prime, g_prime, b_prime) = if h_div < 1.0 {
+        (c, x, 0.0)
+    } else if h_div < 2.0 {
+        (x, c, 0.0)
+    } else if h_div < 3.0 {
+        (0.0, c, x)
+    } else if h_div < 4.0 {
+        (0.0, x, c)
+    } else if h_div < 5.0 {
+        (x, 0.0, c)
+    } else {
+        (c, 0.0, x)
+    };
 
-        Rgb {
-            r: ((r_prime + m) * 255.0 + 0.5) as u8,
-            g: ((g_prime + m) * 255.0 + 0.5) as u8,
-            b: ((b_prime + m) * 255.0 + 0.5) as u8,
-        }
+    Rgb {
+        r: ((r_prime + m) * 255.0 + 0.5) as u8,
+        g: ((g_prime + m) * 255.0 + 0.5) as u8,
+        b: ((b_prime + m) * 255.0 + 0.5) as u8,
     }
 }

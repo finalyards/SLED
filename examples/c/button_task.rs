@@ -1,33 +1,19 @@
 
-use embassy_sync::{
-    blocking_mutex::raw::CriticalSectionRawMutex,
-    channel::{
-        Channel,
-    }
-};
 use embassy_time::{Duration, Timer};
 use esp_idf_hal::gpio::{PinDriver, Input};
 
-#[derive(Debug, Copy, Clone)]
-pub enum ButtonEvent {
-    Pressed,
-    Depressed,
-}
-
-// Using 'CriticalSectionRawMutex' is a must. It grants 'Sync'.
-static BUTTON_CHANNEL: Channel<CriticalSectionRawMutex, ButtonEvent, 4> = Channel::new();
+use sled::Animation;
 
 /**
-* Listens to the BOOT button, reflecting its state to 'BUTTON_CHANNEL'
+* Listens to the BOOT button, reflecting presses in 'state'.
 */
 #[embassy_executor::task]
-pub async fn button_task(mut btn: PinDriver<'static, Input>) {
+pub async fn button_task(mut btn: PinDriver<'static, Input>, state: &'static dyn Animation) {
     const DEBOUNCE_DUR: Duration = Duration::from_millis(50);
 
     async fn debounce_wait() {
         Timer::after(DEBOUNCE_DUR).await;
     }
-    let tx = BUTTON_CHANNEL.sender();
 
     loop {
         loop {
@@ -36,7 +22,8 @@ pub async fn button_task(mut btn: PinDriver<'static, Input>) {
                 if btn.is_low() { break; }
             }
         }
-        tx.send(ButtonEvent::Pressed).await;
+        // Trigger on press
+        state.restart();
 
         loop {
             if btn.wait_for_high().await.is_ok() {
@@ -44,12 +31,6 @@ pub async fn button_task(mut btn: PinDriver<'static, Input>) {
                 if btn.is_high() { break; }
             }
         }
-        tx.send(ButtonEvent::Depressed).await;
+        // nothing on raise
     }
-}
-
-/**
-*/
-pub async fn receive() -> ButtonEvent {
-    BUTTON_CHANNEL.receiver().receive() .await
 }
