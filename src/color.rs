@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Rgb{
     pub r:u8,
@@ -5,14 +7,15 @@ pub struct Rgb{
     pub b:u8
 }
 
+impl Rgb {
+    pub const NONE: Self = Self { r: 0, g: 0, b: 0 };
+}
+
 #[cfg(feature = "color_names")]
 impl Rgb {
     // There are quite many of them. https://www.w3schools.com/colors/colors_names.asp
     // This is mainly intended for examples/testing.
     //
-    // Note: Prefer 'NONE' to 'BLACK' since we're not dimming other colors if one is black.
-    pub const NONE: Self = Self { r: 0, g: 0, b: 0 };
-
     pub const RED: Self = Self { r: 255, g: 0, b: 0 };
     pub const GREEN: Self = Self { r: 0, g: 255, b: 0 };
     pub const BLUE: Self = Self { r: 0, g: 0, b: 255 };
@@ -100,6 +103,77 @@ impl Hsv {
             r: ((r_prime + m) * 255.0).round() as u8,
             g: ((g_prime + m) * 255.0).round() as u8,
             b: ((b_prime + m) * 255.0).round() as u8,
+        }
+    }
+
+    pub fn scale_brightness(mut self, factor: f32) -> Self {
+        assert!(factor > 0.0 && factor <= 1.0);
+
+        let scaled_v = self.v * factor;
+
+        // Simple gamma correction (v^2) helps tune the brightness to human eye.
+        self.v = scaled_v * scaled_v;
+        self
+    }
+}
+
+pub trait HsvSliceExt {
+    /// Merge multiple colors into one.
+    fn merge(&self) -> Hsv;
+}
+
+impl HsvSliceExt for [Hsv] {
+    fn merge(&self) -> Hsv {
+        // Filter out anything with 'v' == 0.0: they (not only black) should not affect the mix.
+        //
+        let colors: Vec<&Hsv> = self.iter()
+            .filter(|&c| c.v > 0.0)
+            .collect();
+
+        if colors.is_empty() {
+            return Hsv { h: 0.0, s: 0.0, v: 0.0 };
+        }
+
+        let mut sin_sum = 0.0;
+        let mut cos_sum = 0.0;
+        let mut s_sum = 0.0;
+        let mut v_sum = 0.0;
+
+        for Hsv{h,s,v} in *colors {
+            let rad = h.to_radians();
+            sin_sum += rad.sin();
+            cos_sum += rad.cos();
+
+            s_sum += s;
+            v_sum += v;
+        }
+
+        let h_avg = {
+            let avg_rad = sin_sum.atan2(cos_sum);
+            let tmp = avg_rad.to_degrees();
+            if tmp < 0.0 {
+                tmp + 360.0
+            } else {
+                tmp
+            }
+        };
+
+        let len = colors.len();
+        let s_avg = s_sum / len as f32;
+
+        // We can do many things with the value (intensity):
+        //      - avg (nah..)
+        //      - max (could work)
+        //      - sum
+        //
+        let v_max = colors.iter().map(|Hsv{v,..}| v).fold(0.0,f32::max);
+
+        let _ = v_sum;  // tbd. if not used, remove
+
+        Hsv {
+            h: h_avg,
+            s: s_avg,
+            v: v_max,
         }
     }
 }

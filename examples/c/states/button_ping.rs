@@ -2,7 +2,7 @@
 use embassy_time::{Duration, Instant};
 
 use sled::{
-    animation::PingAnimation,
+    animations::PingAnimation,
     Rgb,
 };
 

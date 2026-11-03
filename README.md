@@ -4,7 +4,8 @@
 Steering the multi-colored "super" LED of ESP32 devkits, from Rust
 
 - within an ESP-IDF project
-- from [Embassy](https://embassy.dev), providing an `async` interface.
+- from [Embassy](https://embassy.dev), providing an `async` interface
+- for the presentation of internal state (e.g. debugging).
 
 <!-- tbd. *video* (animated png) of a multiplexed LED
 -->
@@ -13,16 +14,21 @@ Steering the multi-colored "super" LED of ESP32 devkits, from Rust
 
 ### Supported / tested devkits
 	
-||feature|state|
+|MCU & devkit|feature|state|
 |---|---|---|
-|[DevKitM-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitm-1/user_guide.html)|`espressif_devkit_m1` (default)|🟩|
+|ESP32-C6 [DevKitM-1](https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitm-1/user_guide.html)|`espressif_devkit_m1` (default)|🟩|
+|...|
 
+<!-- #hidden
 The intention is to support most common ESP32-C6 devkits. See `features` and `DEVS/*`.
+-->
 
 ### 🚥 🚥 🚥 🚥 🚥
 
 ---
->**Warning:** The Neopixel of the devkit can be <font color=turqoise>**ULTRA BRIGHT**</font> without a diffuser. **DO NOT LOOK DIRECTLY** at the LED. Attach a piece of paper tape or a transparent bumper over the light source. Be safe!
+>**Warning:** The Neopixel of the devkit can be <font color=turqoise>**ULTRA BRIGHT**</font> without a diffuser, when driven by the raw (C level) software.
+>
+>**DO NOT LOOK DIRECTLY** at the LED. Attach a piece of paper tape or a transparent bumper over the light source. Be safe!
 
 <!-- tbd. image of a diffuser
 -->
@@ -61,7 +67,6 @@ Due to its multiplexing capability, **more than one information** can be include
 	
 	```
 	$ espflash board-info
-	[2026-10-27T17:18:01Z INFO ] 🚀 A new version of espflash is available: v4.6.0
 	[2026-10-27T17:18:01Z INFO ] Serial port: '/dev/ttyUSB0'
 	...
 	```
@@ -101,43 +106,31 @@ The `esp-idf-sys` setup downloads and installs a whole ESP-IDF development toolc
 ## Steps
 
 ```
-$ cargo run --release -vv --example a
+$ cargo run --release -vv --example c
 ...
 ```
 
 >Note: The first build downloads the ~5GB of ESP-IDF toolchain, so be patient.
 
 <!--
-tbd. Image when running.
-~Make different 3s animations; write colors and the function on the console.
+tbd. Video when running the particular example.
 -->
 
 
+## API design
 
-## Advanced
-
-### Working with an external ESP-IDF component (`led_strip`)
-
-They get downloaded to:
+This is likely pretty obvious, by looking at the `examples` sources, but as a commentary, some points:
 
 ```
-$ find ~/target/ -name managed_components | grep release
-/home/lima/target/riscv32imac-esp-espidf/release/build/esp-idf-sys-452cda0294ec9033/out/managed_components
+static PING_ANIMATION: ButtonPing = ButtonPing::new();
 ```
 
-In the `espressif__led_strip` subdirectory, there's the contents of the [source](https://github.com/espressif/idf-extra-components/tree/master/led_strip) (GitHub).
+The set of animations (states to be made visible via the LED) is intentionally static - defined at build time.
 
-<!-- disabled
-### `esp_idf_...` configurations within your app
+You may have states that are in passive state (not affecting the output); this should provide enough dynamicity. The author feels having a static set is meaningful and simple for the application programmer.
 
-As explained in [conditional compilation](https://esp-rs.github.io/esp-idf-sys/esp_idf_sys/#conditional-compilation) (`esp_idf_sys`), you can use Rust configs within your code.
 
-- `cfg(esp_idf_comp_led_strip_enabled)`
-- `cfg(esp_idf_version="5.5")`
-- ...
 
-If you do not have a use for such, the line in `build.rs` (or the whole file) can be let go.
--->
 
 ## References
 

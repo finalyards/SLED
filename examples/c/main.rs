@@ -1,4 +1,3 @@
-use std::f128::consts::PI;
 use embassy_executor::{
     Spawner
 };
@@ -24,8 +23,8 @@ use sled::SLed;
 mod states;
 use states::ButtonPing;
 
-//static BLUE_WAVE_ANIMATOR: BlueWave = BlueWave::new();
-static PING_ANIMATOR: ButtonPing = ButtonPing::new();
+//static BLUE_WAVE_ANIMATION: BlueWave = BlueWave::new();
+static PING_ANIMATION: ButtonPing = ButtonPing::new();
 
 /// Example with:
 ///     - multiple states
@@ -45,7 +44,7 @@ async fn main(spawner: Spawner) {
         // Set GPIO9 (BOOT btn) as input (pressed is Low)
         let btn_pin = PinDriver::input(peripherals.pins.gpio9, Pull::Up).unwrap();
 
-        spawner.spawn( button_task(btn_pin, &PING_ANIMATOR).unwrap() );
+        spawner.spawn( button_task(btn_pin, &PING_ANIMATION).unwrap() );
     }
 
     // Run the animations
@@ -61,7 +60,7 @@ async fn main(spawner: Spawner) {
 
 #[embassy_executor::task]
 async fn sled_task() -> ! {
-    let states = [&PING_ANIMATOR];
+    let states = &[&PING_ANIMATION];
 
     let led = SLed::new(states)
         .unwrap_or_else(|e| panic!("Failed to initialize: {:?}", e));
