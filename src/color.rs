@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use alloc::vec;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct Rgb{
@@ -106,7 +107,7 @@ impl Hsv {
         }
     }
 
-    pub fn scale_brightness(mut self, factor: f32) -> Self {
+    pub(crate) fn scale_brightness(mut self, factor: f32) -> Self {
         assert!(factor > 0.0 && factor <= 1.0);
 
         let scaled_v = self.v * factor;
@@ -115,66 +116,59 @@ impl Hsv {
         self.v = scaled_v * scaled_v;
         self
     }
+
+    pub(crate) fn merge_from(x: impl IntoIterator<Item = Hsv>) -> Self {
+        merge(x.into_iter())
+    }
 }
 
-pub trait HsvSliceExt {
-    /// Merge multiple colors into one.
-    fn merge(&self) -> Hsv;
-}
+fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
+    // Filter out anything with 'v' == 0.0: they (not only black) should not affect the mix.
+    //
+    let mut colors_iter = iter
+        .filter(|&c| c.v > 0.0)
+        .peekable();
 
-impl HsvSliceExt for [Hsv] {
-    fn merge(&self) -> Hsv {
-        // Filter out anything with 'v' == 0.0: they (not only black) should not affect the mix.
-        //
-        let colors: Vec<&Hsv> = self.iter()
-            .filter(|&c| c.v > 0.0)
-            .collect();
+    if colors_iter.peek().is_none() {
+        return Hsv { h: 0.0, s: 0.0, v: 0.0 };
+    }
 
-        if colors.is_empty() {
-            return Hsv { h: 0.0, s: 0.0, v: 0.0 };
-        }
+    let mut hs_rad: Vec<f32> = vec!();
+    let mut s_sum = 0.0;
+    //let mut v_sum = 0.0;
+    let mut v_max = 0.0;
 
-        let mut sin_sum = 0.0;
+    for Hsv{h,s,v} in colors_iter {
+        let rad = h.to_radians();
+        hs_rad.push(rad);
+
+        s_sum += s;
+        //v_sum += v;
+        v_max = f32::max(v_max, v);
+    }
+
+    let len = hs_rad.len();
+
+    let h_avg = {
+        let mut sin_sum = 0.0_f32;
         let mut cos_sum = 0.0;
-        let mut s_sum = 0.0;
-        let mut v_sum = 0.0;
 
-        for Hsv{h,s,v} in *colors {
-            let rad = h.to_radians();
+        for rad in hs_rad {
             sin_sum += rad.sin();
             cos_sum += rad.cos();
-
-            s_sum += s;
-            v_sum += v;
         }
 
-        let h_avg = {
-            let avg_rad = sin_sum.atan2(cos_sum);
-            let tmp = avg_rad.to_degrees();
-            if tmp < 0.0 {
-                tmp + 360.0
-            } else {
-                tmp
-            }
-        };
+        let rad_avg = sin_sum.atan2(cos_sum);
+        let tmp = rad_avg.to_degrees();
+        if tmp < 0.0 { tmp + 360.0 } else { tmp }
+    };
 
-        let len = colors.len();
-        let s_avg = s_sum / len as f32;
+    let s_avg = s_sum / len as f32;
 
-        // We can do many things with the value (intensity):
-        //      - avg (nah..)
-        //      - max (could work)
-        //      - sum
-        //
-        let v_max = colors.iter().map(|Hsv{v,..}| v).fold(0.0,f32::max);
-
-        let _ = v_sum;  // tbd. if not used, remove
-
-        Hsv {
-            h: h_avg,
-            s: s_avg,
-            v: v_max,
-        }
+    Hsv {
+        h: h_avg,
+        s: s_avg,
+        v: v_max,
     }
 }
 

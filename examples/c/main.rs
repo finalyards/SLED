@@ -11,11 +11,6 @@ use esp_idf_svc::{
     sys::link_patches,
 };
 
-use embassy_time::{
-    Duration,
-    Instant,
-};
-
 mod button_task;
 use button_task::button_task;
 use sled::SLed;

@@ -15,10 +15,13 @@ use embassy_sync::channel::TryReceiveError;
 use embassy_time::Instant;
 
 mod animation;
-pub use animation::{Animation};
+pub use animation::{Animation, AnimationKey,
+    PingAnimation
+};
+// tbd. consider placing template animations (like 'PingAnimation') in a separate module
 
 mod color;
-pub use color::{Hsv, Rgb, HsvSliceExt};
+pub use color::{Hsv, Rgb};
 
 mod error;
 pub use error::Error;
@@ -36,7 +39,7 @@ pub struct SLed {
     anims: &'static [&'static dyn Animation],
 
     // Last time each animation was reset.
-    anim_state: BTreeMap<&'static dyn Animation, Instant>,
+    anim_state: BTreeMap<AnimationKey, Instant>,
 }
 
 impl SLed {
@@ -56,7 +59,7 @@ impl SLed {
         let t0 = Instant::now();
 
         let anim_state = anims.iter().map(|&a_ref| {
-            (a_ref, t0)
+            (AnimationKey(a_ref), t0)
         }).collect::<BTreeMap<_, _>>();
 
         Ok( Self {
@@ -68,7 +71,7 @@ impl SLed {
 
     /// Run the SLed updates
     ///
-    pub async fn run_loop(self) -> ! {
+    pub async fn run_loop(mut self) -> ! {
         // The frame duration does not need to be precise - it only affects visual smoothness, not
         // the duration of animations themselves.
         //
@@ -101,8 +104,11 @@ impl SLed {
             //      will pick them up.
             {
                 match rx.try_receive() {
-                    Ok(ResetEvent(a_ref)) => {
-                        self.anim_state[a_ref] = Instant::now()
+                    Ok(ResetEvent(a_key)) => {
+                        //self.anim_state[&a_key] = Instant::now()
+
+                        assert!(self.anim_state.contains_key(&a_key));
+                        self.anim_state.insert(a_key, Instant::now());
                     },
                     Err(TryReceiveError::Empty) => {}
                 }
@@ -113,16 +119,19 @@ impl SLed {
             let rgb: Rgb = {
                 // Gather the RGBs that matter, as HSV's.
                 //
-                let hsvs: Vec<Hsv> = self.anims.iter().map(|&a_ref| {
-                    let t0 = self.anim_state[a_ref];
+                let hsvs: Vec<Hsv> = self.anims.iter()
+                    .map(|&a| AnimationKey(a))
+                    .map(|a_key| {
+                        let t0 = self.anim_state[&a_key];
 
-                    a_ref.sample(t-t0)
-                })
+                        a_key.sample(t-t0)
+                    })
+                    //
                     .filter(|&rgb| { rgb == Rgb::NONE })    // skip all-black's
                     .map(|rgb| { rgb.to_hsv() })          // convert to HSV for merging
                     .collect();
 
-                let hsv = hsvs.as_slice() .merge();
+                let hsv = Hsv::merge_from(hsvs);
 
                 // Apply brightness limit
                 //
@@ -147,11 +156,10 @@ impl SLed {
     ///
     /// Reset a particular animation to start from its beginning.
     ///
-    /// @note This can be called directly, or via 'Animation::reset'.
+    /// @note Called via 'Animation::restart'.
     ///
-    fn reset(anim: &'static dyn Animation) {
-
-        let ev= ResetEvent(anim);
+    fn reset(a_key: AnimationKey) {
+        let ev= ResetEvent(a_key);
 
         EV_CHANNEL.sender().try_send(ev).unwrap_or_else(|_|
             // It's within the realm of the application to flood too many reset requests before the
@@ -163,4 +171,4 @@ impl SLed {
     }
 }
 
-struct ResetEvent(&'static (dyn Animation + Sync));
+struct ResetEvent(AnimationKey);

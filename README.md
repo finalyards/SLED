@@ -97,9 +97,9 @@ The `esp-idf-sys` setup downloads and installs a whole ESP-IDF development toolc
 <!-- Author's environment
 - ESP32-C6 DevKitM-1
 
-- Lima VM 2.3.0-beta.0
+- Lima VM 2.3.0-rc.0
 - Ubuntu 26.04, within the VM
-- `espflash` 4.5.0, remoted via `probe-rs-remote`
+- `espflash` 4.7.0, remoted via `probe-rs-remote`
 -->
 
 
@@ -129,7 +129,7 @@ The set of animations (states to be made visible via the LED) is intentionally s
 
 You may have states that are in passive state (not affecting the output); this should provide enough dynamicity. The author feels having a static set is meaningful and simple for the application programmer.
 
-
+*tbd. complete once demos are <font color=green>G</font><font color=blue>R</font><font color=red>E</font><font color=white>A</font><font color=orange>T</font>*.
 
 
 ## References
