@@ -42,7 +42,7 @@ bindgen = { version = "0.73" }
 embuild = {  version = "0.33", features = ["espidf"] }
 
 [features]
-default = ["log", "espressif_devkit_m1", "color_names"]
+default = ["log", "espressif_devkit_m1", "color_names", "anims"]
 
 _gpio_8 = []
 _color_mode_grb = []
@@ -51,6 +51,9 @@ color_names = []
 
 espressif_devkit_m1 = ["_gpio_8", "_color_mode_grb"]
 espressif_devkit_c1 = ["_gpio_8", "_color_mode_grb"]
+
+# Provide animation functions: static, ping, ...
+anims = []
 
 [profile.release]
 opt-level = "s"

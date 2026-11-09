@@ -1,7 +1,9 @@
 use alloc::vec::Vec;
 use alloc::vec;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]    // 'PartialEq, Eq' needed for use within const generic
+use core::marker::ConstParamTy;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ConstParamTy)]    // 'PartialEq, Eq' needed for use within const generic
 pub struct Rgb{
     pub r:u8,
     pub g:u8,

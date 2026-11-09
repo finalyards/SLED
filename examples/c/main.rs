@@ -14,21 +14,25 @@ use esp_idf_svc::{
 mod button_task;
 use button_task::button_task;
 use sled::{
+    anims::PingAnimation,
     Animation,
     Rgb,
     SLed
 };
 
-mod states;
-use states::ButtonPing;
-
 //static BLUE_WAVE_ANIMATION: BlueWave = BlueWave::new();
-static PING_ANIMATION: ButtonPing = ButtonPing {};
-static FLAT_ANIMATION: StaticRed = StaticRed {};
 
-struct StaticRed;
+/// Indicates press of the 'BOOT' button.
+static PING_ANIMATION: PingAnimation = PingAnimation::new(Rgb::WHITE, 3_000);
+static FLAT_ANIMATION: StaticColor = StaticColor {};
 
-impl Animation for StaticRed {
+/// Simplest (non-)animation one can make.
+///
+/// Good for testing the output brightness limit
+///
+struct StaticColor;
+
+impl Animation for StaticColor {
     fn sample(&self, _: Duration) -> Rgb {
         Rgb::RED
     }

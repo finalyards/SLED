@@ -19,10 +19,10 @@ use embassy_sync::channel::TryReceiveError;
 use embassy_time::{Duration, Instant, Ticker};
 
 mod animation;
-pub use animation::{Animation, AnimationKey,
-    PingAnimation,
-};
-// tbd. consider placing template animations (like 'PingAnimation') in a separate module
+pub use animation::{Animation, AnimationKey};
+
+#[cfg(feature = "anims")]
+pub mod anims;
 
 mod color;
 pub use color::{Hsv, Rgb};
@@ -118,7 +118,7 @@ impl<const CFG: SLedConfig> SLed<CFG> {
             }
             _count += 1;
 
-            let t_debug = Instant::now();
+            //r let t_debug = Instant::now();
 
             // Handle requests to reset any animation.
             //

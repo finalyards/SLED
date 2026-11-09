@@ -7,12 +7,9 @@ use core::{
 use embassy_time::Duration;
 
 use super::{
-    Hsv,
     Rgb,
     reset_anim,
 };
-
-pub use ping::PingAnimation;
 
 /// Implement this for letting your state be shown on the SLed.
 ///
@@ -43,81 +40,6 @@ impl dyn Animation {
     pub fn restart(self: &'static dyn Animation) {
         let a_key = AnimationKey(self);
         reset_anim(a_key)
-    }
-}
-
-// Specific animations
-mod ping {
-    use super::*;
-
-    /// A "ping", starting with certain 'COLOR' and fading out. One time, but can be restarted.
-    ///
-    /// @note Can be used for representing events in the application code.
-    pub trait PingAnimation: Sync {
-        const CYCLE: Duration;
-        //const MODE: Linear | Exponential  // tbd. experiment; we can have a default mode
-        const COLOR: Rgb;
-    }
-
-    impl<T> Animation for T
-    where
-        T: PingAnimation
-    {
-        fn sample(&self, dur: Duration) -> Rgb {
-            let f = dur.as_millis() as f32 / Self::CYCLE.as_millis() as f32;
-            log::debug!("PingAnimation here: dur={}, f={}", dur.as_millis(), f);
-
-            if f >= 1.0 {
-                return Rgb::NONE;   // one shot
-            }
-
-            #[allow(non_snake_case)]
-            let COLOR_HSV = const { Self::COLOR.to_hsv() };
-
-            // Note: The power could come from a mode selection, 1.0 being linear.
-            let exp_intensity = (1.0 - f).powf(3.0);
-
-            // tbd. TRY OUT: Do we want to:
-            //      - animate intensity (value) from its max, _ignoring_ the intensity of the COLOR param
-            //          or:
-            //      - animate intensity (value) starting from that of the COLOR
-
-            let rgb = {
-                let Hsv { h_deg: h, s, v: _ } = COLOR_HSV;
-
-                #[cfg(true)]
-                let v = exp_intensity;  // 1.0 .. 0.0
-                #[cfg(false)]
-                let v = v * exp_intensity;  // 1.0 .. 0.0
-
-                Hsv { h_deg: h, s, v }.to_rgb()
-            };
-
-            //r log::debug!("PingAnimation providing RGB: {:?}", rgb);    // DEBUG
-            rgb
-        }
-    }
-}
-
-#[cfg(false)]   //R
-mod flat {
-    use super::*;
-
-    /// A flat animation holds a color, unchanged.
-    ///
-    /// @note Useful for testing.
-    ///
-    pub trait FlatAnimation: Sync {
-        const COLOR: Rgb;
-    }
-
-    impl<T> Animation for T
-    where
-        T: FlatAnimation
-    {
-        fn sample(&self, _dur: Duration) -> Rgb {
-            Self::COLOR
-        }
     }
 }
 
