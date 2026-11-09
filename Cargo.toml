@@ -14,8 +14,6 @@ rust-version = "1.99"
 remote_component = { name = "espressif/led_strip", version = "3.1.1" }
 
 [dependencies]
-log = { version = "0.4" }   # tbd. eventualy, optional=true?
-
 embassy-sync = { version = "0.8", features = ["log"] }  # "std"; tbd. make 'log' optional
 embassy-time = { version = "0.5" }
 
@@ -23,6 +21,8 @@ esp-idf-sys = { version = "0.38.1", default-features = false, features = ["nativ
     #
     # Carries ESP-IDF headers, libraries, pulls in external component(s).
     # Needs to be under '[dependencies]' since it carries libraries that end up in the product.
+
+log = { version = "0.4", optional = true }
 
 [dev-dependencies]
 esp-idf-hal = { version = "0.47" }
@@ -42,7 +42,7 @@ bindgen = { version = "0.73" }
 embuild = {  version = "0.33", features = ["espidf"] }
 
 [features]
-default = ["espressif_devkit_m1"]
+default = ["log", "espressif_devkit_m1", "color_names"]
 
 _gpio_8 = []
 _color_mode_grb = []
@@ -54,6 +54,7 @@ espressif_devkit_c1 = ["_gpio_8", "_color_mode_grb"]
 
 [profile.release]
 opt-level = "s"
+panic = "abort"
 
 # Take latest/specific git versions.
 #

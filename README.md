@@ -10,7 +10,10 @@ Steering the multi-colored "super" LED of ESP32 devkits, from Rust
 <!-- tbd. *video* (animated png) of a multiplexed LED
 -->
 
-<img src=".images/light.jpg" style="border-radius: 1.6em" />
+<!--<img src=".images/light.jpg" style="border-radius: 1.6em" />-->
+<img src=".images/paper-diffuser.jpg" width=400em style="border-radius: 1.6em" />
+
+*Image: ESP32-C6 devkit with a quick-and-handy diffuser.*
 
 ### Supported / tested devkits
 	

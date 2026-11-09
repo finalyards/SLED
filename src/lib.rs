@@ -1,10 +1,14 @@
+#![feature(adt_const_params)]
+#![feature(min_adt_const_params)]
+#![feature(const_param_ty_trait)]
 #![no_std]
 extern crate alloc;
+
+use core::marker::ConstParamTy;
 
 use alloc::{
     collections::BTreeMap,
     vec::Vec,
-
 };
 
 use embassy_sync::{
@@ -12,11 +16,11 @@ use embassy_sync::{
     channel::Channel
 };
 use embassy_sync::channel::TryReceiveError;
-use embassy_time::Instant;
+use embassy_time::{Duration, Instant, Ticker};
 
 mod animation;
 pub use animation::{Animation, AnimationKey,
-    PingAnimation
+    PingAnimation,
 };
 // tbd. consider placing template animations (like 'PingAnimation') in a separate module
 
@@ -34,7 +38,33 @@ use esp_idf_sys as _;
 
 static EV_CHANNEL: Channel<CriticalSectionRawMutex, ResetEvent, 4> = Channel::new();
 
-pub struct SLed {
+/// Project specific configuration for the LED output.
+///
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ConstParamTy)]
+pub struct SLedConfig {
+    /// How many times per second the LED is updated
+    fps: u8,
+    /// Ceiling (scaled, not clamped) for the brightness of the output. Viewer safety.
+    brightness_limit: u8    // 1..100
+}
+
+impl SLedConfig {
+    /// Provide a default that is also accessible for application code (for basing custom configs).
+    ///
+    /// @note _not_ using 'impl Default' because we need to be 'const fn'.
+    ///
+    pub const fn default() -> Self {
+        Self {
+            fps: 30,
+            brightness_limit: 70
+        }
+    }
+}
+
+// Note: 'CFG' const generic with a default needs to be given here, not for the '.run_loop()' only
+//      (though it's the only place needing it). Const generic for a function is not allowed a default.
+//
+pub struct SLed<const CFG: SLedConfig /*r = { SLedConfig::default() }*/> {
     raw: RawSLed,
     anims: &'static [&'static dyn Animation],
 
@@ -42,17 +72,9 @@ pub struct SLed {
     anim_state: BTreeMap<AnimationKey, Instant>,
 }
 
-impl SLed {
-    // tbd. this might belong somewhere else:
-    //  - feature?
-    //  - ESP-IDF configuration?
-    //  The application should have a say in whether FPS is 10, 25 or 50. (compare to how logs
-    //  are configured in Rust/Cargo).
-    //
-    const FPS: u8 = 50;
-    const BRIGHTNESS_SCALE: f32 = 0.7;  // tbd. find suitable value
+impl<const CFG: SLedConfig> SLed<CFG> {
 
-    pub fn new(anims: &'static [&'static dyn Animation]) -> Result<Self, Error> {
+    pub fn new_with_config(anims: &'static [&'static dyn Animation]) -> Result<Self, Error> {
         let raw = RawSLed::new()?;
 
         // All animations start right now!
@@ -72,29 +94,29 @@ impl SLed {
     /// Run the SLed updates
     ///
     pub async fn run_loop(mut self) -> ! {
-        // The frame duration does not need to be precise - it only affects visual smoothness, not
-        // the duration of animations themselves.
+        // Note: This only affects _smoothness_ of visual animation, not the timing of the animations
+        //      themselves.
         //
-        //#[allow(non_snake_case)]
-        const FRAME_DUR_MS: u64 = (1000 / SLed::FPS as u16) as u64;   // 30 -> 33; 50 -> 20; 60 -> 16
+        let mut ticker = {
+            #[allow(non_snake_case)]
+            let FRAME_MS: u64 = (1000.0 / CFG.fps as f32).round() as u64;   // 30 -> 33; 50 -> 20; 60 -> 17
+            Ticker::every(Duration::from_millis(FRAME_MS))
+        };
+
+        #[allow(non_snake_case)]
+        let BRIGHTNESS_LIMIT: f32 = CFG.brightness_limit as f32 * 0.01;
 
         let rx = EV_CHANNEL.receiver();
 
+        log::debug!("Entering frame loop..");
+
+        let mut _count = 0;
+
         loop {
-            // Sync to the next frame.
-            //
-            // Note: 'Instant' will run past 32 bits in <50 days from device start. If we wish to
-            //      squeeze this math, we can use 32-bit values (or even 16-bit, for testing) but
-            //      need to account for that overflow. Likely easiest to keep it all 64-bit.
-            {
-                let next = {
-                    let x = Instant::now().as_millis() + (FRAME_DUR_MS-1);
-                    let x = x - x % FRAME_DUR_MS;
-                    Instant::from_millis(x)
-                };
-                embassy_time::Timer::at(next) .await;
+            if _count % 30 == 0 {
+                log::debug!("Frame #{}", _count);
             }
-            log::debug!("Frame");
+            _count += 1;
 
             let t_debug = Instant::now();
 
@@ -105,6 +127,7 @@ impl SLed {
             {
                 match rx.try_receive() {
                     Ok(ResetEvent(a_key)) => {
+                        log::debug!("Reset event");
                         //self.anim_state[&a_key] = Instant::now()
 
                         assert!(self.anim_state.contains_key(&a_key));
@@ -117,58 +140,88 @@ impl SLed {
             let t = Instant::now();
 
             let rgb: Rgb = {
-                // Gather the RGBs that matter, as HSV's.
+                // Gather the RGBs that matter.
                 //
-                let hsvs: Vec<Hsv> = self.anims.iter()
+                let rgbs: Vec<Rgb> = self.anims.iter()
                     .map(|&a| AnimationKey(a))
-                    .map(|a_key| {
+                    .filter_map(|a_key| {
                         let t0 = self.anim_state[&a_key];
 
-                        a_key.sample(t-t0)
+                        let x = a_key.sample(t-t0);
+                        log::debug!("Collected: {:?}", x);
+
+                        if x == Rgb::NONE {
+                            None    // all-black: treat as transparent (no effect, at all)
+                        } else {
+                            Some(x)
+                        }
                     })
                     //
-                    .filter(|&rgb| { rgb == Rgb::NONE })    // skip all-black's
-                    .map(|rgb| { rgb.to_hsv() })          // convert to HSV for merging
                     .collect();
 
-                let hsv = Hsv::merge_from(hsvs);
+                log::debug!("Collected: {}", rgbs.len());
 
-                // Apply brightness limit
-                //
-                hsv.scale_brightness(Self::BRIGHTNESS_SCALE)
-                    .to_rgb()
+                if rgbs.is_empty() {
+                    Rgb::NONE
+                } else {
+                    // Note: Though much use could be a single color only, there's no point in handling
+                    //      that separately. For one, brightness limiting happens in HSV so we'd need
+                    //      the conversion, anyhow.
+                    //
+                    let hsvs = rgbs.into_iter().map(|rgb| { rgb.to_hsv() });
+                    log::debug!("hsvs: {:?}", hsvs);
+                    let hsv = Hsv::merge_from(hsvs);
+
+                    log::debug!("Before scaling: {:?}", hsv);
+
+                    // Apply brightness limit
+                    //
+                    let hsv = hsv.scale_brightness(BRIGHTNESS_LIMIT);
+
+                    log::debug!("After scaling: {:?}", hsv);
+
+                    hsv.to_rgb()
+                }
             };
 
-            // tbd. catch if someone's state has changed and initiate a smooth transition
-            //  ^-- this is an old comment; such state changing might be done in a mechanism
-            //      between 'SLed' and the Animation's.
-
-            log::debug!("Setting to: {:?}", &rgb);  // DEBUG
+            log::debug!("Setting to: {:?}", rgb);  // DEBUG
 
             self.raw.set_rgb(rgb)
                 .unwrap();
 
-            log::debug!("Calculating and setting took: {}", t_debug.elapsed());
+            //log::debug!("Calculating and setting took: {}ms", t_debug.elapsed().as_millis());
+                // measured:
+                //   - 'ButtonPing' that's giving 'NONE' (baseline):   0..1ms (~700..1690 ticks)
+                //
+
+            // Next frame
+            ticker.next().await;
         }
     }
+}
 
-    /// @task Application
-    ///
-    /// Reset a particular animation to start from its beginning.
-    ///
-    /// @note Called via 'Animation::restart'.
-    ///
-    fn reset(a_key: AnimationKey) {
-        let ev= ResetEvent(a_key);
-
-        EV_CHANNEL.sender().try_send(ev).unwrap_or_else(|_|
-            // It's within the realm of the application to flood too many reset requests before the
-            // next 'anim_task' frame runs. Best probably not to panic even then, just ignore such
-            // overflow resets?
-
-            log::warn!("SLed reset channel overflows (capacity {})", EV_CHANNEL.capacity())
-        )
+impl SLed<{ SLedConfig::default() }> {
+    pub fn new(anims: &'static [&'static dyn Animation]) -> Result<Self, Error> {
+        Self::new_with_config(anims)
     }
+}
+
+/// @task Application
+///
+/// Reset a particular animation to start from its beginning.
+///
+/// @note Called via 'Animation::restart'.
+///
+fn reset_anim(a_key: AnimationKey) {
+    let ev= ResetEvent(a_key);
+
+    EV_CHANNEL.sender().try_send(ev).unwrap_or_else(|_|
+        // It's within the realm of the application to flood too many reset requests before the
+        // next 'anim_task' frame runs. Best probably not to panic even then, just ignore such
+        // overflow resets?
+
+        log::warn!("SLed reset channel overflows (capacity {})", EV_CHANNEL.capacity())
+    )
 }
 
 struct ResetEvent(AnimationKey);

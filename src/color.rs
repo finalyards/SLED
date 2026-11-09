@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use alloc::vec;
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]    // 'PartialEq, Eq' needed for use within const generic
 pub struct Rgb{
     pub r:u8,
     pub g:u8,
@@ -26,7 +26,7 @@ impl Rgb {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Hsv {
-    pub h: f32,     // 0..<360.0 [degrees]
+    pub h_deg: f32,     // 0..<360.0 [degrees]  // #rework: consider keeping this in rad (avoids conversions)
     pub s: f32,     // 0..1.0
     pub v: f32,     // 0..1.0
 }
@@ -35,7 +35,7 @@ const fn const_max(a: f32, b: f32) -> f32 { if a > b { a } else { b } }
 const fn const_min(a: f32, b: f32) -> f32 { if a < b { a } else { b } }
 
 impl Rgb {
-    /// Convert RGB -> HSV
+    /// Convert RGB -> HSV; const
     pub const fn to_hsv(self) -> Hsv {
         let r = self.r as f32 / 255.0;
         let g = self.g as f32 / 255.0;
@@ -52,7 +52,7 @@ impl Rgb {
         let s = if max == 0.0 { 0.0 } else { delta / max };
 
         // Hue
-        let h = if delta == 0.0 {
+        let h_deg = if delta == 0.0 {
             0.0
         } else if max == r {
             let mut h = 60.0 * ((g - b) / delta);
@@ -64,17 +64,15 @@ impl Rgb {
             60.0 * (((r - g) / delta) + 4.0)
         };
 
-        Hsv { h, s, v }
+        Hsv { h_deg, s, v }
     }
 }
 
 impl Hsv {
-    /// Convert HSV -> RGB
-    ///
-    /// @note We don't need to be 'const fn'
+    /// Convert HSV -> RGB (not const; input would anyways be dynamic)
     ///
     pub fn to_rgb(self) -> Rgb {
-        let Hsv { h, s, v } = self;
+        let Hsv { h_deg: h, s, v } = self;
 
         assert!(h >= 0.0 && h < 360.0);
         assert!(s >= 0.0 && s <= 1.0);
@@ -130,7 +128,7 @@ fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
         .peekable();
 
     if colors_iter.peek().is_none() {
-        return Hsv { h: 0.0, s: 0.0, v: 0.0 };
+        return Hsv { h_deg: 0.0, s: 0.0, v: 0.0 };
     }
 
     let mut hs_rad: Vec<f32> = vec!();
@@ -138,7 +136,7 @@ fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
     //let mut v_sum = 0.0;
     let mut v_max = 0.0;
 
-    for Hsv{h,s,v} in colors_iter {
+    for Hsv{ h_deg: h,s,v} in colors_iter {
         let rad = h.to_radians();
         hs_rad.push(rad);
 
@@ -166,9 +164,23 @@ fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
     let s_avg = s_sum / len as f32;
 
     Hsv {
-        h: h_avg,
+        h_deg: h_avg,
         s: s_avg,
         v: v_max,
+    }
+}
+
+//#[test]
+impl From<Rgb> for Hsv {
+    fn from(rgb: Rgb) -> Self {
+        rgb.to_hsv()
+    }
+}
+
+//#[test]
+impl From<Hsv> for Rgb {
+    fn from(hsv: Hsv) -> Self {
+        hsv.to_rgb()
     }
 }
 
@@ -208,5 +220,67 @@ pub const fn to_rgb(self) -> Rgb {
         r: ((r_prime + m) * 255.0 + 0.5) as u8,
         g: ((g_prime + m) * 255.0 + 0.5) as u8,
         b: ((b_prime + m) * 255.0 + 0.5) as u8,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EPSILON: f32 = 0.001;
+
+    // Apufunktio HSV-arvojen vertailuun liukulukkopyöristykset huomioiden
+    fn assert_hsv_near(actual: Hsv, expected_h_deg: f32, expected_s: f32, expected_v: f32) {
+        // Jos kyseessä on musta tai täysin harmaa, sävyllä (H) ei ole merkitystä,
+        // joten tarkistetaan se vain jos saturaatio tai kirkkaus on merkittävä.
+        if expected_v > EPSILON && expected_s > EPSILON {
+            assert!((actual.h_deg - expected_h_deg).abs() < 1.0 /*deg*/, "Hue is off: {} vs. {}", actual.h_deg, expected_h_deg);
+        }
+        assert!((actual.s - expected_s).abs() < EPSILON, "Saturation is off: {} vs. {}", actual.s, expected_s);
+        assert!((actual.v - expected_v).abs() < EPSILON, "Value is off: {} vs. {}", actual.v, expected_v);
+    }
+
+    #[test]
+    fn test_rgb_to_hsv_primary_colors() {
+        // R: RGB(255, 0, 0) -> HSV(0.0, 1.0, 1.0)
+        let red_hsv = Hsv::from(Rgb { r: 255, g: 0, b: 0 });
+        assert_hsv_near(red_hsv, 0.0, 1.0, 1.0);
+
+        // G: RGB(0, 255, 0) -> HSV(120.0, 1.0, 1.0)
+        let green_hsv = Hsv::from(Rgb { r: 0, g: 255, b: 0 });
+        assert_hsv_near(green_hsv, 120.0, 1.0, 1.0);
+
+        // B: RGB(0, 0, 255) -> HSV(240.0, 1.0, 1.0)
+        let blue_hsv = Hsv::from(Rgb { r: 0, g: 0, b: 255 });
+        assert_hsv_near(blue_hsv, 240.0, 1.0, 1.0);
+    }
+
+    #[test]
+    fn test_rgb_to_hsv_black_and_white() {
+        // Black (LED off): RGB(0, 0, 0) -> V 0.0 (S,V ignored)
+        let black_hsv = Hsv::from(Rgb { r: 0, g: 0, b: 0 });
+        assert_hsv_near(black_hsv, 0.0, 0.5, 0.5);
+
+        // White: RGB(255, 255, 255) -> Saturation 0.0, Value 1.0 (H ignored)
+        let white_hsv = Hsv::from(Rgb { r: 255, g: 255, b: 255 });
+        assert_hsv_near(white_hsv, 0.0, 0.0, 1.0);
+    }
+
+    #[test]
+    fn test_hsv_to_rgb_roundtrip() {
+        // Testataan, että muunnos HSV -> RGB palauttaa alkuperäiset arvot
+        let targets = vec![
+            Rgb { r: 255, g: 0, b: 0 },   // Red
+            Rgb { r: 0, g: 255, b: 0 },   // Green
+            Rgb { r: 0, g: 0, b: 255 },   // Blue
+            Rgb { r: 128, g: 128, b: 128 }, // Gray
+            Rgb { r: 255, g: 128, b: 0 },   // Orange
+        ];
+
+        for original_rgb in targets {
+            let hsv = Hsv::from(original_rgb);
+            let roundtrip_rgb = Rgb::from(hsv);
+            assert_eq!(original_rgb, roundtrip_rgb, "Roundtrip failed: {:?} -> {:?} -> {:?}", original_rgb, hsv, roundtrip_rgb);
+        }
     }
 }

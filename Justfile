@@ -7,10 +7,15 @@ default:
 # This is only for commentary purposes.
 nightly := ""
 
+export RUST_LOG := "debug"
+#export RUST_LOG := "info,sled=debug" # EXPLORE
+
 alias b:= build
 #alias ba:= build-a
 #alias bb:= build-b
 alias bc:= build-c
+
+alias t:=test
 
 #alias ra:= run-a
 #alias rb:= run-b
@@ -19,6 +24,10 @@ alias rc:= run-c
 build:
 	cargo {{nightly}} build --release -vv \
 		--jobs 1
+
+test:
+	cargo {{nightly}} test --release \
+		--target=$(rustc -vV | sed -n 's/^host: //p')
 
 #build-a:
 #	cargo {{nightly}} build --release -vv --bin a --features log

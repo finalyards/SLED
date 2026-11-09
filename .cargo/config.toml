@@ -49,6 +49,9 @@ CARGO_WORKSPACE_DIR = { value = "", relative = true }
 #   <<
 BINDGEN_EXTRA_CLANG_ARGS="-Wno-expansion-to-defined"
 
+# To get deeper-than-info logs from ESP-IDF components, we likely need some settings. Default is "info".
+#CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
+
 # By default, ESP-IDF brings in all kinds of components. This is a mechanism to cut their list, but maintaining a
 # suitable list is tedious. Best to run with defaults, for now.
 #
