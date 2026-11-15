@@ -14,7 +14,7 @@ rust-version = "1.99"
 remote_component = { name = "espressif/led_strip", version = "3.1.1" }
 
 [dependencies]
-embassy-sync = { version = "0.8", features = ["log"] }  # "std"; tbd. make 'log' optional
+embassy-sync = { version = "0.8", features = [] }  # "log"
 embassy-time = { version = "0.5" }
 
 esp-idf-sys = { version = "0.38.1", default-features = false, features = ["native"] }
@@ -44,6 +44,8 @@ embuild = {  version = "0.33", features = ["espidf"] }
 [features]
 default = ["log", "espressif_devkit_m1", "color_names", "anims"]
 
+log = ["dep:log", "embassy-sync/log"]
+
 _gpio_8 = []
 _color_mode_grb = []
 
@@ -58,6 +60,9 @@ anims = []
 [profile.release]
 opt-level = "s"
 panic = "abort"
+
+[profile.release.package.sled]
+opt-level = 3   # or 2
 
 # Take latest/specific git versions.
 #

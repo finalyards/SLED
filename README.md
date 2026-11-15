@@ -119,6 +119,30 @@ $ cargo run --release -vv --example c
 tbd. Video when running the particular example.
 -->
 
+## Using in your projects 
+
+Notice the section in `Cargo.toml`:
+
+```
+[profile.release]
+opt-level = "s"
+panic = "abort"
+
+[profile.release.package.sled]
+opt-level = 3   # or 2
+```
+
+The animation loop contains floating point calculations and ESP32-C6 does not have an FPU. It is important that you separately set the library to high optimization (avoid `0`, `"s"` or `"z"`). This means more CPU cycles remain for your application.
+
+### FPS selection
+
+The async animation loop should take less than 1ms (when no logging). This means using the library should not affect your application's normal performance.
+
+### Not designed for battery
+
+The library is intended for *debugging* and can also be used in powered applications, to show application state. It is **not intended for battery powered** projects. It's an always-on design with no sleep modes. If you do calculate the power consumption, also consider the current the LED itself will draw, when lit.
+
+>Note: Since the main logic is in the `run_loop` async function, it should be fairly obvious to edit the code so that the LED e.g. blinks every X seconds, and goes blank in between.
 
 ## API design
 

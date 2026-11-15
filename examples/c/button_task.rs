@@ -15,7 +15,7 @@ pub async fn button_task(mut btn: PinDriver<'static, Input>, state: &'static dyn
         Timer::after(DEBOUNCE_DUR).await;
     }
 
-    log::debug!("Starting to track the button..");
+    log::info /*debug*/!("Starting to track the button..");
     loop {
         loop {
             if btn.wait_for_low().await.is_ok() {
@@ -23,7 +23,7 @@ pub async fn button_task(mut btn: PinDriver<'static, Input>, state: &'static dyn
                 if btn.is_low() { break; }
             }
         }
-        log::debug!("Button PRESSED");
+        log::info /*debug*/!("Button PRESSED");
         // Trigger on press
         state.restart();
 

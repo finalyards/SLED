@@ -53,10 +53,15 @@ impl SLedConfig {
     ///
     /// @note _not_ using 'impl Default' because we need to be 'const fn'.
     ///
+    /// @note Each
+    ///
+    /// @tbd Consider taking the defaults from ESP-IDF keys, or env.vars. This allows the application
+    ///     means to steer the values without needing to implement their own 'SLedConfig'.
+    ///
     pub const fn default() -> Self {
         Self {
-            fps: 30,
-            brightness_limit: 70
+            fps: 25,
+            brightness_limit: 15    //35
         }
     }
 }
@@ -111,6 +116,7 @@ impl<const CFG: SLedConfig> SLed<CFG> {
         log::debug!("Entering frame loop..");
 
         let mut _count = 0;
+        let mut last_rgb: Option<Rgb> = None;
 
         loop {
             if _count % 30 == 0 {
@@ -138,6 +144,7 @@ impl<const CFG: SLedConfig> SLed<CFG> {
             }
 
             let t = Instant::now();
+            let _t0_debug = t;
 
             let rgb: Rgb = {
                 // Gather the RGBs that matter.
@@ -168,9 +175,9 @@ impl<const CFG: SLedConfig> SLed<CFG> {
                     //      that separately. For one, brightness limiting happens in HSV so we'd need
                     //      the conversion, anyhow.
                     //
-                    let hsvs = rgbs.into_iter().map(|rgb| { rgb.to_hsv() });
+                    let hsvs = rgbs.into_iter().map(Rgb::into);
                     log::debug!("hsvs: {:?}", hsvs);
-                    let hsv = Hsv::merge_from(hsvs);
+                    let hsv = Hsv::merge(hsvs);
 
                     log::debug!("Before scaling: {:?}", hsv);
 
@@ -180,19 +187,31 @@ impl<const CFG: SLedConfig> SLed<CFG> {
 
                     log::debug!("After scaling: {:?}", hsv);
 
-                    hsv.to_rgb()
+                    hsv.into()
                 }
             };
+            let _dt1 = _t0_debug.elapsed();
 
-            log::debug!("Setting to: {:?}", rgb);  // DEBUG
+            // Set the color.
+            // Optimization: skip the setting (4..5ms on ESP32-C6) if the output stayed the same.
+            //
+            if last_rgb.is_none() || rgb != last_rgb.unwrap() {
+                log::debug!("Setting to: {:?}", rgb);  // DEBUG
 
-            self.raw.set_rgb(rgb)
-                .unwrap();
+                self.raw.set_rgb(rgb)
+                    .unwrap();
 
-            //log::debug!("Calculating and setting took: {}ms", t_debug.elapsed().as_millis());
+                last_rgb = Some(rgb);
+
+                let _dt2 = _t0_debug.elapsed() - _dt1;
+                log::info /*debug*/!("⏰Timing: setting {}ms", _dt2.as_millis());
+                    // measured:
+                    //  - ESP32-C6 (DevKitM1); Optimization level 3, NO DEBUG LOGS: 0ms
+            }
+
+            log::info /*debug*/!("⏰Timing: calc {}ms", _dt1.as_millis());
                 // measured:
-                //   - 'ButtonPing' that's giving 'NONE' (baseline):   0..1ms (~700..1690 ticks)
-                //
+                //  - two (ping + flat); Optimization level 3, NO DEBUG LOGS:    0ms
 
             // Next frame
             ticker.next().await;

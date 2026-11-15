@@ -16,7 +16,7 @@ pub struct PingAnimation {
 
 impl PingAnimation {
     pub const fn new(color: Rgb, ms: u32) -> Self {
-        let color = color.to_hsv();
+        let color: Hsv = color.into_hsv();
         let fade_ms = ms as f32;
 
         Self{
@@ -49,7 +49,7 @@ impl PingAnimation {
             #[cfg(false)]
             let v = v * exp_intensity;  // 1.0 .. 0.0
 
-            Hsv { h_deg: h, s, v }.to_rgb()
+            Hsv { h_deg: h, s, v }.into()
         };
 
         //r log::debug!("PingAnimation providing RGB: {:?}", rgb);    // DEBUG

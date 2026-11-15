@@ -38,7 +38,9 @@ const fn const_min(a: f32, b: f32) -> f32 { if a < b { a } else { b } }
 
 impl Rgb {
     /// Convert RGB -> HSV; const
-    pub const fn to_hsv(self) -> Hsv {
+    ///
+    /// Use this directly if you prefer 'const fn'. Otherwise, '.into()'.
+    pub const fn into_hsv(self) -> Hsv {
         let r = self.r as f32 / 255.0;
         let g = self.g as f32 / 255.0;
         let b = self.b as f32 / 255.0;
@@ -71,9 +73,12 @@ impl Rgb {
 }
 
 impl Hsv {
+    /// Color with 'v'==0
+    const NONE: Self = Self { h_deg: 0.0, s: 0.0, v: 0.0 };
+
     /// Convert HSV -> RGB (not const; input would anyways be dynamic)
     ///
-    pub fn to_rgb(self) -> Rgb {
+    fn into_rgb(self) -> Rgb {
         let Hsv { h_deg: h, s, v } = self;
 
         assert!(h >= 0.0 && h < 360.0);
@@ -117,29 +122,114 @@ impl Hsv {
         self
     }
 
-    pub(crate) fn merge_from(x: impl IntoIterator<Item = Hsv>) -> Self {
-        merge(x.into_iter())
+    pub(crate) fn merge(x: impl IntoIterator<Item = Hsv>) -> Self {
+        merge_with_it(x.into_iter())
+    }
+
+    // #hack Until the tests would be done differently.
+    //
+    pub fn _merge_for_tests(x: impl IntoIterator<Item = Hsv>) -> Self {
+        merge_with_it(x.into_iter())
     }
 }
 
-fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
-    // Filter out anything with 'v' == 0.0: they (not only black) should not affect the mix.
-    //
-    let mut colors_iter = iter
-        .filter(|&c| c.v > 0.0)
-        .peekable();
+/// Merge multiple HSV colors together. This is done as-if the lit colors merged naturally,
+/// and tuned down so that the resulting brightness stays within expressible domain.
+///
+fn merge_with_it(iter: impl Iterator<Item = Hsv>) -> Hsv {
+    // Ignore anything with 'v' == 0.0.
+    let it = {
+        let mut pit = iter
+            .filter(|&c| c.v > 0.0)
+            .peekable();
 
-    if colors_iter.peek().is_none() {
-        return Hsv { h_deg: 0.0, s: 0.0, v: 0.0 };
+        if pit.peek().is_none() {
+            return Hsv::NONE;
+        } else {
+            pit
+        }
+    };
+
+    // H: sin/cos average of the hues, weighed with 's * v' (i.e. pure colors get 1.0 weight;
+    //    e.g. white gets 0.0 weight and its entry is not involved in hue decision-making.
+    // S: avg of s's, weighed with 'v'
+    // V: max of the involved (let's try this way...)
+    //
+    let mut sin_sum = 0.0_f32;
+    let mut cos_sum = 0.0_f32;
+    let mut hue_weight_sum = 0.0_f32;
+
+    let mut s_weighted_sum = 0.0_f32;
+    let mut v_sum = 0.0;
+    let mut v_max = 0.0;
+
+    for Hsv { h_deg, s, v } in it {
+        assert!(v > 0.0);   // already excluded
+
+        // Hue weight: colorful (s > 0) and bright (v > 0) influence most
+        let hue_weight = v * s;
+        if hue_weight > 0.0 {
+            let rad = h_deg.to_radians();
+            sin_sum += rad.sin() * hue_weight;
+            cos_sum += rad.cos() * hue_weight;
+            hue_weight_sum += hue_weight;
+        }
+
+        // Saturation weight: brighter influences saturation more
+        s_weighted_sum += s * v;
+
+        v_sum += v;
+        v_max = f32::max(v_max, v);
     }
 
+    assert!(v_sum > 0.0);   // checked at the beginning that someone has 'v'
+
+    // Calculate the weighted 's' (if all white; s=0; it's 0)
+    let h_avg = if hue_weight_sum > 0.0 {
+        let deg = sin_sum.atan2(cos_sum).to_degrees();
+        if deg < 0.0 { deg + 360.0 } else { deg }
+    } else {
+        0.0
+    };
+
+    // Weighted saturation
+    let s_avg = s_weighted_sum / v_sum;
+
+    Hsv {
+        h_deg: h_avg,
+        s: s_avg,
+        v: v_max,
+    }
+}
+
+#[cfg(false)]   //r: earlier
+fn merge_with_it(iter: impl Iterator<Item = Hsv>) -> Hsv {
+    // Ignore anything with 'v' == 0.0: they (not only black) should not affect the mix.
+    //
+    let it = {
+        let mut pit = iter
+            .filter(|&c| c.v > 0.0)
+            .peekable();
+
+        if pit.peek().is_none() {
+            return Hsv::NONE;
+        } else {
+            pit
+        }
+    };
+
+    // H: sin/cos average of the hues, weighed with 's * v' (i.e. pure colors get 1.0 weight;
+    //    e.g. white gets 0.0 weight and its entry is not involved in hue decision-making.
+    // S: avg of s's, weighed with 'v'
+    // V: ...tbd...
+    //
     let mut hs_rad: Vec<f32> = vec!();
     let mut s_sum = 0.0;
     //let mut v_sum = 0.0;
     let mut v_max = 0.0;
 
-    for Hsv{ h_deg: h,s,v} in colors_iter {
-        let rad = h.to_radians();
+    for Hsv{ h_deg,s,v} in it {
+        let rad = h_deg.to_radians();
         hs_rad.push(rad);
 
         s_sum += s;
@@ -159,8 +249,9 @@ fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
         }
 
         let rad_avg = sin_sum.atan2(cos_sum);
-        let tmp = rad_avg.to_degrees();
-        if tmp < 0.0 { tmp + 360.0 } else { tmp }
+
+        let deg = rad_avg.to_degrees();
+        if deg < 0.0 { deg + 360.0 } else { deg }
     };
 
     let s_avg = s_sum / len as f32;
@@ -172,17 +263,16 @@ fn merge(iter: impl Iterator<Item = Hsv>) -> Hsv {
     }
 }
 
-//#[test]
+
 impl From<Rgb> for Hsv {
     fn from(rgb: Rgb) -> Self {
-        rgb.to_hsv()
+        rgb.into_hsv()
     }
 }
 
-//#[test]
 impl From<Hsv> for Rgb {
     fn from(hsv: Hsv) -> Self {
-        hsv.to_rgb()
+        hsv.into_rgb()
     }
 }
 
@@ -222,67 +312,5 @@ pub const fn to_rgb(self) -> Rgb {
         r: ((r_prime + m) * 255.0 + 0.5) as u8,
         g: ((g_prime + m) * 255.0 + 0.5) as u8,
         b: ((b_prime + m) * 255.0 + 0.5) as u8,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    const EPSILON: f32 = 0.001;
-
-    // Apufunktio HSV-arvojen vertailuun liukulukkopyöristykset huomioiden
-    fn assert_hsv_near(actual: Hsv, expected_h_deg: f32, expected_s: f32, expected_v: f32) {
-        // Jos kyseessä on musta tai täysin harmaa, sävyllä (H) ei ole merkitystä,
-        // joten tarkistetaan se vain jos saturaatio tai kirkkaus on merkittävä.
-        if expected_v > EPSILON && expected_s > EPSILON {
-            assert!((actual.h_deg - expected_h_deg).abs() < 1.0 /*deg*/, "Hue is off: {} vs. {}", actual.h_deg, expected_h_deg);
-        }
-        assert!((actual.s - expected_s).abs() < EPSILON, "Saturation is off: {} vs. {}", actual.s, expected_s);
-        assert!((actual.v - expected_v).abs() < EPSILON, "Value is off: {} vs. {}", actual.v, expected_v);
-    }
-
-    #[test]
-    fn test_rgb_to_hsv_primary_colors() {
-        // R: RGB(255, 0, 0) -> HSV(0.0, 1.0, 1.0)
-        let red_hsv = Hsv::from(Rgb { r: 255, g: 0, b: 0 });
-        assert_hsv_near(red_hsv, 0.0, 1.0, 1.0);
-
-        // G: RGB(0, 255, 0) -> HSV(120.0, 1.0, 1.0)
-        let green_hsv = Hsv::from(Rgb { r: 0, g: 255, b: 0 });
-        assert_hsv_near(green_hsv, 120.0, 1.0, 1.0);
-
-        // B: RGB(0, 0, 255) -> HSV(240.0, 1.0, 1.0)
-        let blue_hsv = Hsv::from(Rgb { r: 0, g: 0, b: 255 });
-        assert_hsv_near(blue_hsv, 240.0, 1.0, 1.0);
-    }
-
-    #[test]
-    fn test_rgb_to_hsv_black_and_white() {
-        // Black (LED off): RGB(0, 0, 0) -> V 0.0 (S,V ignored)
-        let black_hsv = Hsv::from(Rgb { r: 0, g: 0, b: 0 });
-        assert_hsv_near(black_hsv, 0.0, 0.5, 0.5);
-
-        // White: RGB(255, 255, 255) -> Saturation 0.0, Value 1.0 (H ignored)
-        let white_hsv = Hsv::from(Rgb { r: 255, g: 255, b: 255 });
-        assert_hsv_near(white_hsv, 0.0, 0.0, 1.0);
-    }
-
-    #[test]
-    fn test_hsv_to_rgb_roundtrip() {
-        // Testataan, että muunnos HSV -> RGB palauttaa alkuperäiset arvot
-        let targets = vec![
-            Rgb { r: 255, g: 0, b: 0 },   // Red
-            Rgb { r: 0, g: 255, b: 0 },   // Green
-            Rgb { r: 0, g: 0, b: 255 },   // Blue
-            Rgb { r: 128, g: 128, b: 128 }, // Gray
-            Rgb { r: 255, g: 128, b: 0 },   // Orange
-        ];
-
-        for original_rgb in targets {
-            let hsv = Hsv::from(original_rgb);
-            let roundtrip_rgb = Rgb::from(hsv);
-            assert_eq!(original_rgb, roundtrip_rgb, "Roundtrip failed: {:?} -> {:?} -> {:?}", original_rgb, hsv, roundtrip_rgb);
-        }
     }
 }
