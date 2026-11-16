@@ -11,28 +11,32 @@ use sled::Animation;
 pub async fn button_task(mut btn: PinDriver<'static, Input>, state: &'static dyn Animation) {
     const DEBOUNCE_DUR: Duration = Duration::from_millis(50);
 
-    async fn debounce_wait() {
-        Timer::after(DEBOUNCE_DUR).await;
-    }
+    /***R
+    /// Log a button error and wait for a moment, so that there would not be a flood of such
+    /// messages. (Likely we never have any; what could be the cause? tbd.)
+    async fn error_wait(e: esp_idf_sys::EspError) {
+        log::error!("Error waiting for the BOOT button: {}", e);
+        Timer::after( Duration::from_millis(1000) ).await;
+    }*/
 
-    log::info /*debug*/!("Starting to track the button..");
+    log::info /*debug*/!("♦️Starting to track the button..");
     loop {
         loop {
-            if btn.wait_for_low().await.is_ok() {
-                debounce_wait() .await;
-                if btn.is_low() { break; }
-            }
+            // Reading the pin would fail only on the _first_ call, if GPIO interrupt fails to get
+            // registered.
+            btn.wait_for_falling_edge()
+                .await
+                .expect("Failure to register GPIO interrupt for BOOT button");
+
+            Timer::after(DEBOUNCE_DUR).await;
+            if btn.is_low() { break; }
         }
-        log::info /*debug*/!("Button PRESSED");
+
+        log::info /*debug*/!("🍏Button PRESSED");
         // Trigger on press
         state.restart();
 
-        loop {
-            if btn.wait_for_high().await.is_ok() {
-                debounce_wait() .await;
-                if btn.is_high() { break; }
-            }
-        }
-        // nothing on raise
+        // Above '.wait_for_falling_edge()' will wait over the "high" state - including possible
+        //      bounces in the transition to it.
     }
 }

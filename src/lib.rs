@@ -118,6 +118,12 @@ impl<const CFG: SLedConfig> SLed<CFG> {
         let mut _count = 0;
         let mut last_rgb: Option<Rgb> = None;
 
+        // Note to developers:
+        //      Logging within the loop degrades the speed of one loop iteration to ~30..40ms.
+        //      Without logging, performance should be <1ms per loop iteration.
+        //
+        //      Consider storing stuff and logging by the counter, e.g. every 10th frame or so.
+        //
         loop {
             if _count % 30 == 0 {
                 log::debug!("Frame #{}", _count);
@@ -155,7 +161,7 @@ impl<const CFG: SLedConfig> SLed<CFG> {
                         let t0 = self.anim_state[&a_key];
 
                         let x = a_key.sample(t-t0);
-                        log::debug!("Collected: {:?}", x);
+                        log::trace!("Collected: {:?}", x);
 
                         if x == Rgb::NONE {
                             None    // all-black: treat as transparent (no effect, at all)
@@ -166,7 +172,7 @@ impl<const CFG: SLedConfig> SLed<CFG> {
                     //
                     .collect();
 
-                log::debug!("Collected: {}", rgbs.len());
+                log::trace!("Collected: {}", rgbs.len());
 
                 if rgbs.is_empty() {
                     Rgb::NONE
@@ -176,16 +182,16 @@ impl<const CFG: SLedConfig> SLed<CFG> {
                     //      the conversion, anyhow.
                     //
                     let hsvs = rgbs.into_iter().map(Rgb::into);
-                    log::debug!("hsvs: {:?}", hsvs);
+                    log::trace!("hsvs: {:?}", hsvs);
                     let hsv = Hsv::merge(hsvs);
 
-                    log::debug!("Before scaling: {:?}", hsv);
+                    log::trace!("Before scaling: {:?}", hsv);
 
                     // Apply brightness limit
                     //
                     let hsv = hsv.scale_brightness(BRIGHTNESS_LIMIT);
 
-                    log::debug!("After scaling: {:?}", hsv);
+                    log::trace!("After scaling: {:?}", hsv);
 
                     hsv.into()
                 }
@@ -204,14 +210,14 @@ impl<const CFG: SLedConfig> SLed<CFG> {
                 last_rgb = Some(rgb);
 
                 let _dt2 = _t0_debug.elapsed() - _dt1;
-                log::info /*debug*/!("⏰Timing: setting {}ms", _dt2.as_millis());
+                log::info /*trace*/!("⏰Timing: setting {}us", _dt2.as_micros());
                     // measured:
-                    //  - ESP32-C6 (DevKitM1); Optimization level 3, NO DEBUG LOGS: 0ms
+                    //  - ESP32-C6 (DevKitM1); Optimization level 3, NO DEBUG LOGS: 399..417us
             }
 
-            log::info /*debug*/!("⏰Timing: calc {}ms", _dt1.as_millis());
+            log::info /*trace*/!("⏰Timing: calc {}us", _dt1.as_micros());
                 // measured:
-                //  - two (ping + flat); Optimization level 3, NO DEBUG LOGS:    0ms
+                //  - two (ping + flat); Optimization level 3, NO DEBUG LOGS:   113..160us
 
             // Next frame
             ticker.next().await;

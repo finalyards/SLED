@@ -23,7 +23,7 @@ use sled::{
 //static BLUE_WAVE_ANIMATION: BlueWave = BlueWave::new();
 
 /// Indicates press of the 'BOOT' button.
-static PING_ANIMATION: PingAnimation = PingAnimation::new(Rgb::WHITE, 3_000);
+static PING_ANIMATION: PingAnimation = PingAnimation::new(Rgb::BLUE, 1_500);
 static FLAT_ANIMATION: StaticColor = StaticColor {};
 
 /// Simplest (non-)animation one can make.
@@ -34,7 +34,8 @@ struct StaticColor;
 
 impl Animation for StaticColor {
     fn sample(&self, _: Duration) -> Rgb {
-        Rgb::RED
+        //Rgb::RED.with_value(0.5)    // tbd. allow better use of both HSV and RGB
+        Rgb { r: 64, g: 0, b: 0 }   // dimmer red
     }
 }
 

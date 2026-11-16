@@ -8,16 +8,13 @@ default:
 nightly := ""
 
 #
-# NOTE: 'esp-idf-svc' logging (that we use) DOES NOT SUPPORT MODULE PATHS ("info,sled=debug" etc.)
-#   Unfortunately, giving a value does not affect our code alone, but turns _all_ ESP-IDF logging (even 'espflash'
-#   that one uses as a binary) into DEBUG mode.
+# NOTE: 'esp-idf-svc' logging (that we use) DOES NOT SUPPORT MODULE PATHS ("info,sled=debug"). This is only evident
+#   by looking at its source code (it falls back to "info" - WITHOUT PROVIDING AN ERROR OR WARNING). It should warn.
 #
-#   tbd. Find a way to steer dependencies and our code (sled,c,...) separately.
+#   tbd. Find a way to steer the larger stack and our code (sled,c,t,...) separately.
 #
-# NOTE!! debug messages within the 'run_loop' degrade performance to about 29..39ms / loop. Without such debug
-#     messages, the loop should run in less than a ms.
-#
-export RUST_LOG := "debug"
+#export RUST_LOG := "debug"
+export RUST_LOG := "info"
 #export RUST_LOG := "info,sled,c"  # what we'd like: info for the rest, "debug" for us
 
 alias b:= build

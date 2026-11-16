@@ -1,6 +1,3 @@
-use alloc::vec::Vec;
-use alloc::vec;
-
 use core::marker::ConstParamTy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ConstParamTy)]    // 'PartialEq, Eq' needed for use within const generic
@@ -115,10 +112,15 @@ impl Hsv {
     pub(crate) fn scale_brightness(mut self, factor: f32) -> Self {
         assert!(factor > 0.0 && factor <= 1.0);
 
-        let scaled_v = self.v * factor;
+        self.v *= factor;
 
         // Simple gamma correction (v^2) helps tune the brightness to human eye.
-        self.v = scaled_v * scaled_v;
+        /*** tbd. trying without; got awefully low on RGB output
+        {
+            let scaled_v = self.v * factor;
+            self.v = scaled_v * scaled_v;
+        }**/
+
         self
     }
 

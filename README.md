@@ -121,6 +121,8 @@ tbd. Video when running the particular example.
 
 ## Using in your projects 
 
+### Build optimizations
+
 Notice the section in `Cargo.toml`:
 
 ```
@@ -133,6 +135,18 @@ opt-level = 3   # or 2
 ```
 
 The animation loop contains floating point calculations and ESP32-C6 does not have an FPU. It is important that you separately set the library to high optimization (avoid `0`, `"s"` or `"z"`). This means more CPU cycles remain for your application.
+
+### Color selection for your animations
+
+Prefer pure colors (high saturation) in different parts of the color circle.
+
+E.g. 
+
+- Red
+- Green
+- Blue
+- Yellow
+
 
 ### FPS selection
 
