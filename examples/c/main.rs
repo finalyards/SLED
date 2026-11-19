@@ -1,7 +1,4 @@
-use embassy_executor::{
-    Spawner
-};
-use embassy_time::Duration;
+
 use esp_idf_hal::{
     gpio::{PinDriver, Pull},
     peripherals::Peripherals,
@@ -10,6 +7,9 @@ use esp_idf_hal::{
 use esp_idf_svc::{
     sys::link_patches,
 };
+
+use embassy_executor::Spawner;
+use embassy_time::Duration;
 
 mod button_task;
 use button_task::button_task;
@@ -42,8 +42,8 @@ impl Animation for StaticColor {
 const ANIMS: &[&dyn sled::Animation] = &[&PING_ANIMATION, &FLAT_ANIMATION];
 
 /// Example with:
-///     - multiple states
-///     - interactive state change
+///     - dual, overlapping animations (color mix)
+///     - interactive state change (by BOOT button)
 ///
 #[embassy_executor::main]
 async fn main(spawner: Spawner) {
@@ -54,7 +54,6 @@ async fn main(spawner: Spawner) {
     esp_idf_svc::log::init_from_env();
 
     log::info!("Lights up, world!");
-    log::debug!("ABC");
 
     let peripherals = Peripherals::take().unwrap();
     {

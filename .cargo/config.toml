@@ -18,7 +18,7 @@ MCU = "esp32c6"
 
 # We occasionally swap the target between:
 #   - latest ESP-IDF 5.5.x
-#   - latest ESP-IDF 6.x
+#   - latest ESP-IDF 6.x.x (latest)
 #
 # Builds on earlier versions _may_ succeed but are not tested against. The version restrictions come from:
 #   - 'espressif/led_strip' component (ESP-IDF 5.2+)
@@ -27,8 +27,8 @@ MCU = "esp32c6"
 #
 # Report here if you use the library with older ESP-IDF versions and it works.
 #
-#ESP_IDF_VERSION = "6.1.1"
-ESP_IDF_VERSION = "5.5.6"
+ESP_IDF_VERSION = "6.1.1"
+#ESP_IDF_VERSION = "5.5.6"
 
 ESP_IDF_TOOLS_INSTALL_DIR = "global"
     # "out":        '{cargo output}/espressif'
@@ -52,9 +52,32 @@ BINDGEN_EXTRA_CLANG_ARGS="-Wno-expansion-to-defined"
 # To get deeper-than-info logs from ESP-IDF components, we likely need some settings. Default is "info".
 #CONFIG_LOG_MAXIMUM_LEVEL_DEBUG=y
 
-# By default, ESP-IDF brings in all kinds of components. This is a mechanism to cut their list, but maintaining a
-# suitable list is tedious. Best to run with defaults, for now.
+# An explicit set of components, to cut down the clear build time ('esp-idf-sys' builds ESP-IDF from sources; these
+# components provide all the support for Rust 'std').
 #
+# Component list maintained in: https://github.com/finalyards-org/esp-idf.embassy / branch 'skinned'
+#
+# SUITABLE FOR ESP-IDF 6.1.1
+#
+ESP_IDF_COMPONENTS = """\
+    main;\
+    driver;\
+    esp_adc;\
+    esp_driver_i2c;\
+    esp_driver_i2s;\
+    esp_driver_ledc;\
+    esp_driver_rmt;\
+    esp_driver_twai;\
+    esp_driver_gptimer;\
+    esp_driver_pcnt;\
+    fatfs;\
+    spiffs;\
+    lwip;\
+    nvs_flash\
+"""
+
+# Was in ESP-IDF 5.5.x
 #ESP_IDF_COMPONENTS = """\
-#   ...,... \
+#  cxx;newlib;freertos;esp_hw_support;heap;log;soc;hal;esp_rom;esp_common;esp_system;riscv;main;driver;\
+#  vfs;nvs_flash;wear_levelling;fatfs;spiffs;\
 #"""

@@ -70,11 +70,3 @@ opt-level = 3   # or 2
 #|esp-idf-hal = { git = "https://github.com/esp-rs/esp-idf" } #, rev = "..."
 #|esp-idf-svc = { git = "https://github.com/esp-rs/esp-idf" }
 #|esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf" }
-
-#[[bin]]
-#name = "a"
-#required-features = ["log"]
-#
-#[[bin]]
-#name = "b"
-#required-features = ["log"]
